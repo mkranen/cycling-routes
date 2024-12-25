@@ -13,6 +13,23 @@
             "module": "uvicorn",
             "args": ["main:app", "--reload", "--port", "8081"],
             "jinja": true
+        },
+        {
+            "name": "React",
+            "request": "launch",
+            "runtimeArgs": ["run", "dev"],
+            "cwd": "${workspaceFolder}/frontend",
+            "envFile": "${workspaceFolder}/frontend/.env",
+            "runtimeExecutable": "npm",
+            "skipFiles": ["<node_internals>/**"],
+            "type": "node"
           },
-          ]
+          {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Chrome",
+            "url": "http://localhost:5173",
+            "webRoot": "${workspaceRoot}/frontend/src"
+          },
+    ]
 }
