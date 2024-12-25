@@ -1,3 +1,5 @@
+import xml.etree.ElementTree as ET
+
 from database import Base
 from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String
 from sqlalchemy.orm import Session, relationship
@@ -48,3 +50,16 @@ class Route(Base):
     @staticmethod
     def get_all(db: Session):
         return db.query(Route).all()
+
+    def add_gpx_file(self, db: Session):
+        file_name = self.name.replace("/", "-") + ".gpx"
+        activity_type = self.sport
+        file_path = f"../gpx_files/{activity_type}/{file_name}"
+
+        with open(file_path, "r") as file:
+            # gpx_tree = ET.parse(file)
+            # gpx_root = gpx_tree.getroot()
+            # print(gpx_root)
+            self.gpx_file_path = file_name
+            db.add(self)
+            db.commit()
