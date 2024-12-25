@@ -12,6 +12,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 router = APIRouter()
+app.include_router(router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -65,11 +66,18 @@ def home():
     return "response"
 
 
-@app.get("/routes/")
+@app.get("/routes")
 def get_routes(db: Session = Depends(get_db)):
-    # Use db session here
     routes = Route.get_all(db)
     return routes
 
 
-app.include_router(router)
+@app.get("/add-gpx")
+def add_gpx(db: Session = Depends(get_db)):
+    routes = Route.get_all(db)
+    for route in routes:
+        if route.potential_route_update:
+            route.add_gpx_file(db)
+            # break
+
+    return "done"
