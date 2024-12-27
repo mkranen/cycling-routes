@@ -1,7 +1,7 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import React from "react";
-import Map from "./Map";
+import Map from "./components/map/Map";
 function App() {
   return (
     <div className="h-dvh w-dvw">

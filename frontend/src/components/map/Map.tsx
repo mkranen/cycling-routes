@@ -1,8 +1,8 @@
 import { GeolocateControl, Map as MaplibreMap } from "@vis.gl/react-maplibre";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setLatitude, setLongitude } from "./components/map/mapSlice";
-import { RootState } from "./store";
+import { RootState } from "../../store";
+import { setLatitude, setLongitude } from "./mapSlice";
 
 function Map() {
   const latitude = useSelector((state: RootState) => state.map.latitude);
@@ -35,8 +35,6 @@ function Map() {
           console.log(error);
         }}
       />
-
-      {/* <Marker longitude={5.13381188435385} latitude={52.11015993159475} anchor="bottom"></Marker> */}
     </MaplibreMap>
   );
 }
