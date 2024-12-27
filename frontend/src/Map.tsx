@@ -3,15 +3,18 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import React from "react";
 
 function Map() {
+  const [viewState, setViewState] = React.useState({
+    longitude: 5.13381188435385,
+    latitude: 52.11015993159475,
+    zoom: 15,
+  });
+
   return (
     <MaplibreMap
-      initialViewState={{
-        longitude: 5.13381188435385,
-        latitude: 52.11015993159475,
-        zoom: 15,
-      }}
+      {...viewState}
       reuseMaps={true}
       className="w-full h-full"
+      onMove={(evt) => setViewState(evt.viewState)}
       mapStyle={`https://api.maptiler.com/maps/streets/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`}
       //   mapStyle="https://raw.githubusercontent.com/go2garret/maps/main/src/assets/json/openStreetMap.json"
       //   mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
