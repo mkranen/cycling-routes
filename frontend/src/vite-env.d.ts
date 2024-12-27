@@ -2,9 +2,9 @@
 /// <reference types="vite/types/importMeta.d.ts" />
 
 interface ImportMetaEnv {
-  readonly VITE_MAPTILER_KEY: string;
+    readonly VITE_MAPTILER_KEY: string;
 }
 
 interface ImportMeta {
-  readonly env: ImportMetaEnv;
+    readonly env: ImportMetaEnv;
 }

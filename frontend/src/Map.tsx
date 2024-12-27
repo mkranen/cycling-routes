@@ -1,8 +1,8 @@
 import { GeolocateControl, Map as MaplibreMap } from "@vis.gl/react-maplibre";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "../../store";
-import { setLatitude, setLongitude } from "./mapSlice";
+import { setLatitude, setLongitude } from "./components/map/mapSlice";
+import { RootState } from "./store";
 
 function Map() {
     const latitude = useSelector((state: RootState) => state.map.latitude);
