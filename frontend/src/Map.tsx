@@ -16,11 +16,6 @@ function Map() {
       className="w-full h-full"
       onMove={(evt) => setViewState(evt.viewState)}
       mapStyle={`https://api.maptiler.com/maps/streets/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`}
-      //   mapStyle="https://raw.githubusercontent.com/go2garret/maps/main/src/assets/json/openStreetMap.json"
-      //   mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-      // mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
-      // mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
-      //   mapStyle="https://geoserveis.icgc.cat/contextmaps/icgc.json"
     >
       <GeolocateControl
         positionOptions={{ enableHighAccuracy: true }}
