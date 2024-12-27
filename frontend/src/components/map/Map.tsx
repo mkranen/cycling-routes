@@ -2,6 +2,7 @@ import { GeolocateControl, Map as MaplibreMap } from "@vis.gl/react-maplibre";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
+import Routes from "../routes/Routes.tsx";
 import { setLatitude, setLongitude } from "./mapSlice";
 
 function Map() {
@@ -35,6 +36,7 @@ function Map() {
                     console.log(error);
                 }}
             />
+            <Routes />
         </MaplibreMap>
     );
 }
