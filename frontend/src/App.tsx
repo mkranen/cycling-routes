@@ -1,11 +1,13 @@
+import "maplibre-gl/dist/maplibre-gl.css";
+
 import React from "react";
-import MapLibreMap from "./Map";
+import Map from "./Map";
 function App() {
   return (
     <div className="h-dvh w-dvw">
       <h1 className="flex items-center h-16 p-4 text-3xl">Cycling routes</h1>
       <div className="absolute bottom-0 left-0 right-0 top-16">
-        <MapLibreMap />
+        <Map />
       </div>
     </div>
   );
