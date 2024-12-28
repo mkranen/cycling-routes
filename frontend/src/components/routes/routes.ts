@@ -1,14 +1,4 @@
-type TrackPoint = {
-    elevation?: number;
-    time?: string;
-};
-
-type TrackPoints = TrackPoint[] & {
-    minLon?: number;
-    maxLon?: number;
-    minLat?: number;
-    maxLat?: number;
-};
+import { TrackPoint, TrackPoints } from "../../types/route";
 
 export function getTrackPoints(fileString: string) {
     const parser = new DOMParser();

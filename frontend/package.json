@@ -12,6 +12,7 @@
   "dependencies": {
     "@reduxjs/toolkit": "^2.5.0",
     "@vis.gl/react-maplibre": "^1.0.0-alpha.4",
+    "humps": "^2.0.1",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^4.7.1",
     "react": "19.0.0",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@types/humps": "^2.0.6",
     "@types/leaflet": "^1.9.15",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
