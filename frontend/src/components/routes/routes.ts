@@ -1,15 +1,17 @@
-import { TrackPoint, TrackPoints } from "../../types/route";
+import { Position } from "geojson";
 
-export function getTrackPoints(fileString: string) {
+type PositionData = Position & { elevation: number };
+
+export function getTrackPoints(fileString: string): PositionData[] {
     const parser = new DOMParser();
     const parsed = parser.parseFromString(fileString, "text/xml");
     const trackPoints: HTMLCollectionOf<Element> = parsed.getElementsByTagName("trkpt");
-    const points: TrackPoints = [];
+    const points: PositionData[] = [];
 
     for (const trackPoint of trackPoints) {
         const longitude = trackPoint.getAttribute("lon") || "0";
         const latitude = trackPoint.getAttribute("lat") || "0";
-        const point = [parseFloat(longitude), parseFloat(latitude)] as TrackPoint;
+        const point = [parseFloat(longitude), parseFloat(latitude)] as PositionData;
         try {
             const elevation = trackPoint.getElementsByTagName("ele")[0]?.textContent || "0";
             point.elevation = parseFloat(elevation);

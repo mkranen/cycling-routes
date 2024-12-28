@@ -1,16 +1,17 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { RootState } from "../../store";
 
 interface MapState {
     longitude: number;
     latitude: number;
     zoom: number;
+    interactiveLayerIds: string[];
 }
 
 const initialState: MapState = {
     longitude: 5.13381188435385,
     latitude: 52.11015993159475,
     zoom: 15,
+    interactiveLayerIds: [],
 };
 
 export const mapSlice = createSlice({
@@ -26,9 +27,11 @@ export const mapSlice = createSlice({
         setZoom: (state, action: PayloadAction<number>) => {
             state.zoom = action.payload;
         },
+        setInteractiveLayerIds: (state, action: PayloadAction<string[]>) => {
+            state.interactiveLayerIds = action.payload;
+        },
     },
 });
 
-export const { setLongitude, setLatitude, setZoom } = mapSlice.actions;
-export const selectViewState = (state: RootState) => state.map;
+export const { setLongitude, setLatitude, setZoom, setInteractiveLayerIds } = mapSlice.actions;
 export default mapSlice.reducer;
