@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 from database import Base
 from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String
 from sqlalchemy.orm import Session, relationship
+from utils.gpx import get_track_points
 
 
 class Route(Base):
@@ -27,6 +28,7 @@ class Route(Base):
     changed_at = Column(DateTime)
     potential_route_update = Column(Boolean, default=False)
     gpx_file_path = Column(String, nullable=True)
+    route_points = Column(JSON, nullable=True)
 
     # Relationships
     start_point = relationship("StartPoint", uselist=False, back_populates="route")
@@ -54,9 +56,12 @@ class Route(Base):
     def add_gpx_file(self, db: Session):
         file_name = self.name.replace("/", "-") + ".gpx"
         activity_type = self.sport
-        file_path = f"../gpx_files/{activity_type}/{file_name}"
+        file_path = f"./gpx_files/{activity_type}/{file_name}"
 
-        with open(file_path, "r"):
+        with open(file_path, "r") as file:
+            file_string = file.read()
+            route_points = get_track_points(file_string)
+            self.route_points = route_points
             self.gpx_file_path = file_name
             db.add(self)
             db.commit()

@@ -72,8 +72,8 @@ def get_routes(db: Session = Depends(get_db)):
     return routes
 
 
-@app.get("/add-gpx")
-def add_gpx(db: Session = Depends(get_db)):
+@app.get("/update-gpx")
+def update_gpx(db: Session = Depends(get_db)):
     routes = Route.get_all(db)
     for route in routes:
         if route.potential_route_update:
