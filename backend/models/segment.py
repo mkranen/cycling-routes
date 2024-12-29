@@ -1,6 +1,6 @@
 from database import Base
-from sqlalchemy import JSON, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+from sqlmodel import JSON, Column, ForeignKey, Integer, String
 
 
 class Segment(Base):

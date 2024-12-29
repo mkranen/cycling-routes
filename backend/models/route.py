@@ -1,8 +1,8 @@
 import xml.etree.ElementTree as ET
 
 from database import Base
-from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String
 from sqlalchemy.orm import Session, relationship
+from sqlmodel import JSON, Boolean, Column, DateTime, Float, Integer, String
 from utils.gpx import get_track_points
 
 

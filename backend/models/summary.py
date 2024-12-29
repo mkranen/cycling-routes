@@ -1,6 +1,6 @@
 from database import Base
-from sqlalchemy import Column, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+from sqlmodel import Column, Float, ForeignKey, Integer, String
 
 
 class SurfaceSummary(Base):
