@@ -9,3 +9,4 @@ uvicorn[standard]
 aiohttp
 aiohttp_retry
 uvicorn[standard]
+pyhumps
