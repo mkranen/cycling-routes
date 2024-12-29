@@ -56,10 +56,7 @@ class Route(Base):
         activity_type = self.sport
         file_path = f"../gpx_files/{activity_type}/{file_name}"
 
-        with open(file_path, "r") as file:
-            # gpx_tree = ET.parse(file)
-            # gpx_root = gpx_tree.getroot()
-            # print(gpx_root)
+        with open(file_path, "r"):
             self.gpx_file_path = file_name
             db.add(self)
             db.commit()
