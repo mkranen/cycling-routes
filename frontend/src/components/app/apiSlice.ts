@@ -8,7 +8,7 @@ export const routesApi = createApi({
             query: (name) => `routes/${name}`,
         }),
         getRoutes: builder.query<any, any>({
-            query: () => "routes",
+            query: ({ limit }) => (limit ? `routes?limit=${limit}` : "routes"),
         }),
     }),
 });

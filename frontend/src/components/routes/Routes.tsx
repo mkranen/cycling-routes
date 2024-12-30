@@ -5,11 +5,10 @@ import { useDispatch } from "react-redux";
 import { Route } from "../../types/route";
 import { useGetRoutesQuery } from "../app/apiSlice";
 import { setInteractiveLayerIds } from "../map/mapSlice";
-import { getTrackPoints } from "./routes";
 
 export default function Routes() {
     const [routes, setRoutes] = useState<JSX.Element[]>([]);
-    const { data: routesData } = useGetRoutesQuery({});
+    const { data: routesData } = useGetRoutesQuery({ limit: 100 });
     const dispatch = useDispatch();
 
     async function loadRoutes(routeData: Route[]) {
@@ -33,16 +32,11 @@ export default function Routes() {
     }
 
     async function loadTrackPoints(route): Promise<JSX.Element | null> {
-        const gpxDir = import.meta.env.VITE_GPX_DIR;
-        if (!route.gpxFilePath) {
+        if (!route.routePoints) {
             return null;
         }
 
-        const filePath = `${route.sport}/${route.gpxFilePath}`;
-        const fullFilePath = `${gpxDir}/${filePath}`;
-        const routeData = await fetch(fullFilePath).then((r) => r.text());
-        const routePoints = getTrackPoints(routeData);
-
+        const routePoints = route.routePoints.map((point) => [point.lng, point.lat]);
         const routeSource = {
             id: `route-source-${route.id}`,
             type: "FeatureCollection",
@@ -81,7 +75,7 @@ export default function Routes() {
 
     useEffect(() => {
         if (routesData) {
-            loadRoutes(routesData.slice(0, 20));
+            loadRoutes(routesData);
         }
     }, [routesData]);
 

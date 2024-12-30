@@ -18,7 +18,7 @@ function Map() {
     const zoom = useSelector((state: RootState) => state.map.zoom);
     const [popupVisible, setPopupVisible] = useState(false);
     const [popupData, setPopupData] = useState<RouteData | null>(null);
-    const { data: routesData } = useGetRoutesQuery({});
+    const { data: routesData } = useGetRoutesQuery({ limit: 100 });
     const interactiveLayerIds = useSelector((state: RootState) => state.map.interactiveLayerIds);
     const dispatch = useDispatch();
 

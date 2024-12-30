@@ -62,7 +62,10 @@ class Route(SQLModel, table=True):
         return session.exec(select(Route).where(Route.id == id)).first()
 
     @staticmethod
-    def get_all(session: Session, limit: int = 100):
+    def get_all(session: Session, limit: Optional[int]):
+        if limit is None:
+            return session.exec(select(Route)).all()
+
         return session.exec(select(Route).limit(limit)).all()
 
     def add_gpx_file(self, session: Session):

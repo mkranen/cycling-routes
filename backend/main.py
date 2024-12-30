@@ -83,9 +83,9 @@ def get_route(id: int):
 
 
 @app.get("/routes", response_model=list[RoutePublic])
-def get_routes():
+def get_routes(limit: int = 1000):
     with Session(engine) as session:
-        routes = Route.get_all(session)
+        routes = Route.get_all(session, limit)
     return routes
 
 
