@@ -1,14 +1,14 @@
 import json
 
-from database import Base, engine, get_db
-from fastapi import APIRouter, Depends, FastAPI, WebSocketDisconnect
+from database import engine
+from fastapi import APIRouter, FastAPI, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from models import Route
-from sqlalchemy.orm import Session
+from models.route import Route, RoutePublic
+from sqlmodel import Session, SQLModel, select
 from starlette.websockets import WebSocket
 from websockets.exceptions import ConnectionClosed
 
-Base.metadata.create_all(bind=engine)
+SQLModel.metadata.create_all(bind=engine)
 
 app = FastAPI()
 router = APIRouter()
@@ -21,6 +21,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
 
 
 class ConnectionManager:
@@ -45,6 +49,11 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
+
+
 @router.get("/ws")
 def http_endpoint():
     return []
@@ -66,18 +75,20 @@ def home():
     return "response"
 
 
-@app.get("/routes")
-def get_routes(db: Session = Depends(get_db)):
-    routes = Route.get_all(db)
+@app.get("/routes", response_model=list[RoutePublic])
+def get_routes():
+    with Session(engine) as session:
+        routes = session.exec(select(Route)).all()
     return routes
 
 
 @app.get("/update-gpx")
-def update_gpx(db: Session = Depends(get_db)):
-    routes = Route.get_all(db)
-    for route in routes:
-        if route.potential_route_update:
-            route.add_gpx_file(db)
-            # break
+def update_gpx():
+    with Session(engine) as session:
+        routes = Route.get_all(session)
+        for route in routes:
+            if route.potential_route_update:
+                route.add_gpx_file(session)
+                # break
 
-    return "done"
+        return "done"

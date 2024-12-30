@@ -1,5 +1,4 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import humps from "humps";
 
 export const routesApi = createApi({
     reducerPath: "pokemonApi",
@@ -10,9 +9,6 @@ export const routesApi = createApi({
         }),
         getRoutes: builder.query<any, any>({
             query: () => "routes",
-            transformResponse: (response: any) => {
-                return humps.camelizeKeys(response);
-            },
         }),
     }),
 });

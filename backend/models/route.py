@@ -1,59 +1,61 @@
-import xml.etree.ElementTree as ET
+from datetime import datetime
+from typing import List, Optional
 
-from database import Base
-from sqlalchemy.orm import Session, relationship
-from sqlmodel import JSON, Boolean, Column, DateTime, Float, Integer, String
+from humps import camelize
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel
 from utils.gpx import get_track_points
 
 
-class Route(Base):
+def to_camel(string):
+    return camelize(string)
+
+
+class Route(SQLModel, table=True):
     __tablename__ = "routes"
 
-    id = Column(Integer, primary_key=True)
-    type = Column(String)
-    name = Column(String)
-    source = Column(JSON)
-    routing_version = Column(String)
-    status = Column(String)
-    date = Column(DateTime)
-    kcal_active = Column(Integer)
-    kcal_resting = Column(Integer)
-    distance = Column(Float)
-    duration = Column(Integer)
-    elevation_up = Column(Float)
-    elevation_down = Column(Float)
-    sport = Column(String)
-    query = Column(String)
-    constitution = Column(Integer)
-    changed_at = Column(DateTime)
-    potential_route_update = Column(Boolean, default=False)
-    gpx_file_path = Column(String, nullable=True)
-    route_points = Column(JSON, nullable=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
+    type: str
+    name: str
+    source: dict = Field(sa_column=Column(JSON))
+    routing_version: Optional[str] = None
+    status: str
+    date: datetime
+    kcal_active: int
+    kcal_resting: int
+    distance: float
+    duration: int
+    elevation_up: float
+    elevation_down: float
+    sport: str
+    query: str
+    constitution: int
+    changed_at: datetime
+    potential_route_update: bool = Field(default=False)
+    gpx_file_path: Optional[str] = None
+    # route_points: dict = Field(sa_column=Column(JSON))
+    route_points: str
 
-    # Relationships
-    start_point = relationship("StartPoint", uselist=False, back_populates="route")
-    difficulty = relationship("Difficulty", uselist=False, back_populates="route")
-    tour_information = relationship("TourInformation", back_populates="route")
-    path_points = relationship("PathPoint", back_populates="route")
-    segments = relationship("Segment", back_populates="route")
-    surface_summary = relationship("SurfaceSummary", back_populates="route")
-    way_type_summary = relationship("WayTypeSummary", back_populates="route")
+    start_point: list["StartPoint"] = Relationship(back_populates="route")
+    path_points: list["PathPoint"] = Relationship(back_populates="route")
+    surface_summary: list["SurfaceSummary"] = Relationship(back_populates="route")
+    difficulty: list["Difficulty"] = Relationship(back_populates="route")
+    segments: list["Segment"] = Relationship(back_populates="route")
+    way_type_summary: list["WayTypeSummary"] = Relationship(back_populates="route")
+    tour_information: list["TourInformation"] = Relationship(back_populates="route")
+
+    class Config:
+        populate_by_name = True
+        alias_generator = to_camel
 
     def __repr__(self):
         return f"Route(id={self.id}, name={self.name}, type={self.type})"
 
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "type": self.type,
-        }
-
     @staticmethod
-    def get_all(db: Session):
-        return db.query(Route).all()
+    def get_all(session: Session):
+        return session.query(Route).all()
 
-    def add_gpx_file(self, db: Session):
+    def add_gpx_file(self, session: Session):
         file_name = self.name.replace("/", "-") + ".gpx"
         activity_type = self.sport
         file_path = f"./gpx_files/{activity_type}/{file_name}"
@@ -63,5 +65,105 @@ class Route(Base):
             route_points = get_track_points(file_string)
             self.route_points = route_points
             self.gpx_file_path = file_name
-            db.add(self)
-            db.commit()
+            session.add(self)
+            session.commit()
+
+
+class RoutePublic(SQLModel):
+    id: int
+    name: str
+    type: str
+    distance: float
+    elevation_up: float
+    sport: str
+    changed_at: datetime
+    gpx_file_path: Optional[str] = None
+    route_points: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+        alias_generator = to_camel
+
+
+class StartPoint(SQLModel, table=True):
+    __tablename__ = "start_points"
+
+    id: int = Field(default=None, primary_key=True)
+    lat: float = Field(default=None)
+    lng: float = Field(default=None)
+    alt: float = Field(default=None)
+
+    route_id: int | None = Field(default=None, foreign_key="routes.id")
+    route: Route | None = Relationship(back_populates="start_point")
+
+
+class PathPoint(SQLModel, table=True):
+    __tablename__ = "path_points"
+
+    id: int = Field(default=None, primary_key=True)
+    lat: float = Field(default=None)
+    lng: float = Field(default=None)
+    index: int = Field(default=None)
+    end_index: int = Field(default=None, nullable=True)
+    reference: str = Field(default=None, nullable=True)
+    segment_type: str = Field(default=None, nullable=True)
+
+    route_id: int | None = Field(default=None, foreign_key="routes.id")
+    route: Route | None = Relationship(back_populates="path_points")
+
+
+class SurfaceSummary(SQLModel, table=True):
+    __tablename__ = "surface_summaries"
+
+    id: int = Field(default=None, primary_key=True)
+    type: str = Field(default=None)
+    amount: float = Field(default=None)
+
+    route_id: int | None = Field(default=None, foreign_key="routes.id")
+    route: Route | None = Relationship(back_populates="surface_summary")
+
+
+class Difficulty(SQLModel, table=True):
+    __tablename__ = "difficulties"
+
+    id: int = Field(default=None, primary_key=True)
+    grade: str = Field(default=None)
+    explanation_technical: str = Field(default=None)
+    explanation_fitness: str = Field(default=None)
+
+    route_id: int | None = Field(default=None, foreign_key="routes.id")
+    route: Route | None = Relationship(back_populates="difficulty")
+
+
+class Segment(SQLModel, table=True):
+    __tablename__ = "segments"
+
+    id: int = Field(default=None, primary_key=True)
+    type: str = Field(default=None)
+    from_index: int = Field(default=None)
+    to_index: int = Field(default=None)
+
+    route_id: int | None = Field(default=None, foreign_key="routes.id")
+    route: Route | None = Relationship(back_populates="segments")
+
+
+class WayTypeSummary(SQLModel, table=True):
+    __tablename__ = "way_type_summaries"
+
+    id: int = Field(default=None, primary_key=True)
+    type: str = Field(default=None)
+    amount: float = Field(default=None)
+
+    route_id: int | None = Field(default=None, foreign_key="routes.id")
+    route: Route | None = Relationship(back_populates="way_type_summary")
+
+
+class TourInformation(SQLModel, table=True):
+    __tablename__ = "tour_information"
+
+    id: int = Field(default=None, primary_key=True)
+    type: str = Field(default=None)
+    segments: dict = Field(sa_column=Column(JSON))
+
+    route_id: int | None = Field(default=None, foreign_key="routes.id")
+    route: Route | None = Relationship(back_populates="tour_information")

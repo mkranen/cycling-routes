@@ -12,7 +12,6 @@
   "dependencies": {
     "@reduxjs/toolkit": "^2.5.0",
     "@vis.gl/react-maplibre": "^1.0.0-alpha.4",
-    "humps": "^2.0.1",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^4.7.1",
     "react": "19.0.0",
