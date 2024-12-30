@@ -1,5 +1,13 @@
-import { GeolocateControl, Layer, MapLayerMouseEvent, Map as MaplibreMap, Popup, Source } from "@vis.gl/react-maplibre";
-import React, { useMemo, useState } from "react";
+import {
+    GeolocateControl,
+    Layer,
+    MapLayerMouseEvent,
+    Map as MaplibreMap,
+    MapRef,
+    Popup,
+    Source,
+} from "@vis.gl/react-maplibre";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { Route } from "../../types/route.ts";
@@ -13,9 +21,11 @@ type RouteData = {
 };
 
 function Map() {
+    const mapRef = useRef<MapRef>(null);
     const latitude = useSelector((state: RootState) => state.map.latitude);
     const longitude = useSelector((state: RootState) => state.map.longitude);
     const zoom = useSelector((state: RootState) => state.map.zoom);
+    const [hoveredRouteId, setHoveredRouteId] = useState<number | null>(null);
     const [popupVisible, setPopupVisible] = useState(false);
     const [popupData, setPopupData] = useState<RouteData | null>(null);
     const { data: routesData } = useGetRoutesQuery({ limit: 100 });
@@ -34,6 +44,7 @@ function Map() {
         const routeFeatures = routesData
             .filter((route: Route) => route.routePoints)
             .map((route: Route) => ({
+                id: route.id,
                 type: "Feature",
                 geometry: {
                     type: "LineString",
@@ -42,7 +53,6 @@ function Map() {
             }));
 
         return {
-            id: "routes",
             type: "FeatureCollection",
             features: routeFeatures,
         };
@@ -52,10 +62,10 @@ function Map() {
         const features = event.features;
         if (!features || features.length === 0) return null;
 
-        const routeId = features[0].layer?.id.split("route-layer-")[1];
+        const routeId = features[0].id;
         if (!routeId) return null;
 
-        return routesData?.find((route: Route) => route.id === Number(routeId));
+        return routesData?.find((route: Route) => route.id === routeId);
     }
 
     function showRoutePopup(event: MapLayerMouseEvent) {
@@ -67,16 +77,34 @@ function Map() {
 
         setPopupData({ route, event });
         setPopupVisible(true);
+
+        if (mapRef.current) {
+            mapRef.current.setFeatureState({ source: "routes", id: hoveredRouteId }, { hover: false });
+            mapRef.current.setFeatureState({ source: "routes", id: route.id }, { hover: true });
+            setHoveredRouteId(route.id);
+        }
     }
 
     function hideRoutePopup() {
         setPopupVisible(false);
         setPopupData(null);
+
+        if (mapRef.current) {
+            mapRef.current.setFeatureState({ source: "routes", id: hoveredRouteId }, { hover: false });
+            setHoveredRouteId(null);
+        }
     }
+
+    useEffect(() => {
+        if (routesFeaturesData) {
+            console.log(routesFeaturesData);
+        }
+    }, [routesFeaturesData]);
 
     return (
         <MaplibreMap
             {...viewState}
+            ref={mapRef}
             className="w-full h-full"
             interactiveLayerIds={interactiveLayerIds}
             mapStyle={`https://api.maptiler.com/maps/streets/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`}
@@ -105,8 +133,8 @@ function Map() {
             />
 
             {routesFeaturesData && (
-                <Source type="geojson" data={routesFeaturesData}>
-                    <Layer {...routesLayer} />
+                <Source id="routes" type="geojson" data={routesFeaturesData}>
+                    <Layer {...routesLayer} source="routes" />
                 </Source>
             )}
 

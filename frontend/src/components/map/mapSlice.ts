@@ -11,7 +11,7 @@ const initialState: MapState = {
     longitude: 5.13381188435385,
     latitude: 52.11015993159475,
     zoom: 15,
-    interactiveLayerIds: [],
+    interactiveLayerIds: ["routes"],
 };
 
 export const mapSlice = createSlice({
