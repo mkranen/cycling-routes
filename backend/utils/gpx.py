@@ -28,6 +28,6 @@ def get_track_points(file_string: str) -> List[Tuple[float, float, float]]:
         except Exception as e:
             print(f"Error parsing elevation: {e}")
 
-        points.append((longitude, latitude, elevation))
+        points.append({"lat": latitude, "lng": longitude, "elevation": elevation})
 
     return points

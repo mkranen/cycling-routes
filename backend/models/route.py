@@ -3,12 +3,18 @@ from typing import List, Optional
 
 from humps import camelize
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel
+from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
 from utils.gpx import get_track_points
 
 
 def to_camel(string):
     return camelize(string)
+
+
+class Point(SQLModel):
+    lat: float
+    lng: float
+    elevation: float
 
 
 class Route(SQLModel, table=True):
@@ -33,8 +39,8 @@ class Route(SQLModel, table=True):
     changed_at: datetime
     potential_route_update: bool = Field(default=False)
     gpx_file_path: Optional[str] = None
-    # route_points: dict = Field(sa_column=Column(JSON))
-    route_points: str
+    route_points: Optional[List[Point]] = Field(sa_column=Column(JSON), default=[])
+    # route_points: str
 
     start_point: list["StartPoint"] = Relationship(back_populates="route")
     path_points: list["PathPoint"] = Relationship(back_populates="route")
@@ -52,8 +58,12 @@ class Route(SQLModel, table=True):
         return f"Route(id={self.id}, name={self.name}, type={self.type})"
 
     @staticmethod
-    def get_all(session: Session):
-        return session.query(Route).all()
+    def get_by_id(session: Session, id: int):
+        return session.exec(select(Route).where(Route.id == id)).first()
+
+    @staticmethod
+    def get_all(session: Session, limit: int = 100):
+        return session.exec(select(Route).limit(limit)).all()
 
     def add_gpx_file(self, session: Session):
         file_name = self.name.replace("/", "-") + ".gpx"
@@ -72,13 +82,14 @@ class Route(SQLModel, table=True):
 class RoutePublic(SQLModel):
     id: int
     name: str
-    type: str
-    distance: float
-    elevation_up: float
-    sport: str
-    changed_at: datetime
+    sport: str = None
+    type: Optional[str] = None
+    distance: Optional[float] = None
+    elevation_up: Optional[float] = None
+    changed_at: Optional[datetime] = None
     gpx_file_path: Optional[str] = None
-    route_points: Optional[str] = None
+    route_points: Optional[List[Point]] = Field(sa_column=Column(JSON))
+    # route_points: Optional[str] = None
 
     class Config:
         populate_by_name = True

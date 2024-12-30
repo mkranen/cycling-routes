@@ -75,11 +75,25 @@ def home():
     return "response"
 
 
+@app.get("/routes/{id}", response_model=RoutePublic)
+def get_route(id: int):
+    with Session(engine) as session:
+        route = Route.get_by_id(session, id)
+    return route
+
+
 @app.get("/routes", response_model=list[RoutePublic])
 def get_routes():
     with Session(engine) as session:
-        routes = session.exec(select(Route)).all()
+        routes = Route.get_all(session)
     return routes
+
+
+@app.get("/test")
+def test():
+    json_data = '{"id": 1990783694, "name": "test", "sport": "racebike", "routePoints": {"lat": 1, "lng": 2, "elevation": 3}}'
+    # json_data = '[["aa", "bb", "cc"]]'
+    print(RoutePublic.model_validate_json(json_data))
 
 
 @app.get("/update-gpx")
