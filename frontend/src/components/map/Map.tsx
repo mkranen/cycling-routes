@@ -7,38 +7,29 @@ import {
     Popup,
     Source,
 } from "@vis.gl/react-maplibre";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
+import type { RouteCollection, RoutePopupData, ViewState } from "../../types/map";
 import { Route } from "../../types/route.ts";
 import { useGetRoutesQuery } from "../app/apiSlice.ts";
 import { setLatitude, setLongitude } from "./mapSlice";
 import { routesLayer } from "./mapStyle.ts";
-
-type RouteData = {
-    route: Route;
-    event: any;
-};
 
 function Map() {
     const mapRef = useRef<MapRef>(null);
     const latitude = useSelector((state: RootState) => state.map.latitude);
     const longitude = useSelector((state: RootState) => state.map.longitude);
     const zoom = useSelector((state: RootState) => state.map.zoom);
+    const interactiveLayerIds = useSelector((state: RootState) => state.map.interactiveLayerIds);
     const [hoveredRouteId, setHoveredRouteId] = useState<number | null>(null);
     const [popupVisible, setPopupVisible] = useState(false);
-    const [popupData, setPopupData] = useState<RouteData | null>(null);
+    const [popupData, setPopupData] = useState<RoutePopupData | null>(null);
+    const [viewState, setViewState] = useState<ViewState>({ longitude, latitude, zoom });
     const { data: routesData } = useGetRoutesQuery({ limit: 100 });
-    const interactiveLayerIds = useSelector((state: RootState) => state.map.interactiveLayerIds);
     const dispatch = useDispatch();
 
-    const [viewState, setViewState] = React.useState({
-        longitude,
-        latitude,
-        zoom,
-    });
-
-    const routesFeaturesData = useMemo(() => {
+    const routesFeaturesData = useMemo((): RouteCollection | null => {
         if (!routesData) return null;
 
         const routeFeatures = routesData
@@ -75,31 +66,29 @@ function Map() {
             return;
         }
 
-        setPopupData({ route, event });
+        setPopupData({ route, event, coordinates: event.lngLat });
         setPopupVisible(true);
 
-        if (mapRef.current) {
-            mapRef.current.setFeatureState({ source: "routes", id: hoveredRouteId }, { hover: false });
-            mapRef.current.setFeatureState({ source: "routes", id: route.id }, { hover: true });
-            setHoveredRouteId(route.id);
+        if (!mapRef.current) {
+            return;
         }
+
+        mapRef.current.setFeatureState({ source: "routes", id: hoveredRouteId }, { hover: false });
+        mapRef.current.setFeatureState({ source: "routes", id: route.id }, { hover: true });
+        setHoveredRouteId(route.id);
     }
 
     function hideRoutePopup() {
         setPopupVisible(false);
         setPopupData(null);
 
-        if (mapRef.current) {
-            mapRef.current.setFeatureState({ source: "routes", id: hoveredRouteId }, { hover: false });
-            setHoveredRouteId(null);
+        if (!mapRef.current) {
+            return;
         }
-    }
 
-    useEffect(() => {
-        if (routesFeaturesData) {
-            console.log(routesFeaturesData);
-        }
-    }, [routesFeaturesData]);
+        mapRef.current.setFeatureState({ source: "routes", id: hoveredRouteId }, { hover: false });
+        setHoveredRouteId(null);
+    }
 
     return (
         <MaplibreMap
@@ -153,4 +142,5 @@ function Map() {
         </MaplibreMap>
     );
 }
+
 export default Map;
