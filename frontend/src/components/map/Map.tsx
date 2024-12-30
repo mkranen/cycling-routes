@@ -1,11 +1,11 @@
-import { GeolocateControl, MapLayerMouseEvent, Map as MaplibreMap, Popup } from "@vis.gl/react-maplibre";
-import React, { useState } from "react";
+import { GeolocateControl, Layer, MapLayerMouseEvent, Map as MaplibreMap, Popup, Source } from "@vis.gl/react-maplibre";
+import React, { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { Route } from "../../types/route.ts";
 import { useGetRoutesQuery } from "../app/apiSlice.ts";
-import Routes from "../routes/Routes.tsx";
 import { setLatitude, setLongitude } from "./mapSlice";
+import { routesLayer } from "./mapStyle.ts";
 
 type RouteData = {
     route: Route;
@@ -27,6 +27,26 @@ function Map() {
         latitude,
         zoom,
     });
+
+    const routesFeaturesData = useMemo(() => {
+        if (!routesData) return null;
+
+        const routeFeatures = routesData
+            .filter((route: Route) => route.routePoints)
+            .map((route: Route) => ({
+                type: "Feature",
+                geometry: {
+                    type: "LineString",
+                    coordinates: route.routePoints.map((point) => [point.lng, point.lat]),
+                },
+            }));
+
+        return {
+            id: "routes",
+            type: "FeatureCollection",
+            features: routeFeatures,
+        };
+    }, [routesData]);
 
     function getFirstRoute(event: MapLayerMouseEvent) {
         const features = event.features;
@@ -83,7 +103,13 @@ function Map() {
                     console.log(error);
                 }}
             />
-            <Routes />
+
+            {routesFeaturesData && (
+                <Source type="geojson" data={routesFeaturesData}>
+                    <Layer {...routesLayer} />
+                </Source>
+            )}
+
             {popupVisible && (
                 <Popup
                     longitude={popupData?.event.lngLat.lng}

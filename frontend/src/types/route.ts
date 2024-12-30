@@ -10,6 +10,13 @@ export type TrackPoints = TrackPoint[] & {
     maxLat?: number;
 };
 
+export type RoutePoint = {
+    lng: number;
+    lat: number;
+    elevation?: number;
+    time?: string;
+};
+
 export type Route = {
     type: string;
     kcalResting: number;
@@ -30,6 +37,7 @@ export type Route = {
     query: string;
     kcalActive: number;
     constitution: number;
+    routePoints: RoutePoint[];
 };
 
 export type Routes = Route[];
