@@ -3,7 +3,7 @@ import json
 from database import engine
 from fastapi import APIRouter, FastAPI, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from models.komoot_route import KomootRoute, KomootRoutePublic
+from models.models import KomootRoute, KomootRoutePublic
 from sqlmodel import Session, SQLModel, select
 from starlette.websockets import WebSocket
 from websockets.exceptions import ConnectionClosed

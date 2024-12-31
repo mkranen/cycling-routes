@@ -17,6 +17,9 @@ class Point(SQLModel):
     elevation: float
 
 
+# Komoot
+
+
 class KomootRoute(SQLModel, table=True):
     __tablename__ = "komoot_routes"
 

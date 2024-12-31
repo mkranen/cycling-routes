@@ -1,4 +1,4 @@
-from models.komoot_route import (
+from models.models import (
     KomootDifficulty,
     KomootPathPoint,
     KomootRoute,
