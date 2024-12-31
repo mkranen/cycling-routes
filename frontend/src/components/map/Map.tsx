@@ -103,9 +103,15 @@ function Map() {
             }}
             onMouseEnter={(event: MapLayerMouseEvent) => {
                 showRoutePopup(event);
+                if (mapRef.current) {
+                    mapRef.current.getCanvas().style.cursor = "pointer";
+                }
             }}
             onMouseLeave={() => {
                 hideRoutePopup();
+                if (mapRef.current) {
+                    mapRef.current.getCanvas().style.cursor = "";
+                }
             }}
         >
             <GeolocateControl
