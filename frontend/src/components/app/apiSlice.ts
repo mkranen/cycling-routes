@@ -4,13 +4,13 @@ export const routesApi = createApi({
     reducerPath: "pokemonApi",
     baseQuery: fetchBaseQuery({ baseUrl: "http://localhost:8081" }),
     endpoints: (builder) => ({
-        getRoute: builder.query<any, any>({
-            query: (name) => `routes/${name}`,
+        getKomootRoute: builder.query<any, any>({
+            query: (id) => `komoot-route/${id}`,
         }),
-        getRoutes: builder.query<any, any>({
-            query: ({ limit }) => (limit ? `routes?limit=${limit}` : "routes"),
+        getKomootRoutes: builder.query<any, any>({
+            query: ({ limit }) => (limit ? `komoot-routes?limit=${limit}` : "komoot-routes"),
         }),
     }),
 });
 
-export const { useGetRouteQuery, useGetRoutesQuery } = routesApi;
+export const { useGetKomootRouteQuery, useGetKomootRoutesQuery } = routesApi;

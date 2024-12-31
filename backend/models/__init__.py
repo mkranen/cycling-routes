@@ -1,21 +1,21 @@
-from models.route import (
-    Difficulty,
-    PathPoint,
-    Route,
-    Segment,
-    StartPoint,
-    SurfaceSummary,
-    TourInformation,
-    WayTypeSummary,
+from models.komoot_route import (
+    KomootDifficulty,
+    KomootPathPoint,
+    KomootRoute,
+    KomootSegment,
+    KomootStartPoint,
+    KomootSurfaceSummary,
+    KomootTourInformation,
+    KomootWayTypeSummary,
 )
 
 __all__ = [
-    "Route",
-    "StartPoint",
-    "Difficulty",
-    "TourInformation",
-    "PathPoint",
-    "Segment",
-    "SurfaceSummary",
-    "WayTypeSummary",
+    "KomootRoute",
+    "KomootStartPoint",
+    "KomootDifficulty",
+    "KomootTourInformation",
+    "KomootPathPoint",
+    "KomootSegment",
+    "KomootSurfaceSummary",
+    "KomootWayTypeSummary",
 ]

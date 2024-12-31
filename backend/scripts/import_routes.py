@@ -2,28 +2,32 @@ import json
 from datetime import datetime
 from typing import Dict, List
 
-from database import SessionLocal
+from database import engine
 from models import (
-    Difficulty,
-    PathPoint,
-    Route,
-    Segment,
-    StartPoint,
-    SurfaceSummary,
-    TourInformation,
-    WayTypeSummary,
+    KomootDifficulty,
+    KomootPathPoint,
+    KomootRoute,
+    KomootSegment,
+    KomootStartPoint,
+    KomootSurfaceSummary,
+    KomootTourInformation,
+    KomootWayTypeSummary,
 )
+from sqlalchemy.orm import sessionmaker
 
 
 def parse_datetime(date_str: str) -> datetime:
     return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
 
 
-def import_route_data(route_data: Dict) -> Route:
+def import_route_data(route_data: Dict) -> KomootRoute:
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
     try:
         # Check if route already exists
-        existing_route = db.query(Route).filter(Route.id == route_data["id"]).first()
+        existing_route = (
+            db.query(KomootRoute).filter(KomootRoute.id == route_data["id"]).first()
+        )
         if existing_route:
             print(
                 f"Route {route_data['name']} (ID: {route_data['id']}) already exists, skipping..."
@@ -31,7 +35,7 @@ def import_route_data(route_data: Dict) -> Route:
             return existing_route
 
         # Create main route
-        route = Route(
+        route = KomootRoute(
             id=route_data["id"],
             type=route_data["type"],
             name=route_data["name"],
@@ -56,10 +60,12 @@ def import_route_data(route_data: Dict) -> Route:
 
         # Check and create start point
         existing_start_point = (
-            db.query(StartPoint).filter(StartPoint.route_id == route.id).first()
+            db.query(KomootStartPoint)
+            .filter(KomootStartPoint.route_id == route.id)
+            .first()
         )
         if not existing_start_point:
-            start_point = StartPoint(
+            start_point = KomootStartPoint(
                 route_id=route.id,
                 lat=route_data["start_point"]["lat"],
                 lng=route_data["start_point"]["lng"],
@@ -70,10 +76,12 @@ def import_route_data(route_data: Dict) -> Route:
         # Check and create difficulty
         if "difficulty" in route_data:
             existing_difficulty = (
-                db.query(Difficulty).filter(Difficulty.route_id == route.id).first()
+                db.query(KomootDifficulty)
+                .filter(KomootDifficulty.route_id == route.id)
+                .first()
             )
             if not existing_difficulty:
-                difficulty = Difficulty(
+                difficulty = KomootDifficulty(
                     route_id=route.id,
                     grade=route_data["difficulty"]["grade"],
                     explanation_technical=route_data["difficulty"][
@@ -85,11 +93,13 @@ def import_route_data(route_data: Dict) -> Route:
 
         # Check and create tour information
         existing_tour_info = (
-            db.query(TourInformation).filter(TourInformation.route_id == route.id).all()
+            db.query(KomootTourInformation)
+            .filter(KomootTourInformation.route_id == route.id)
+            .all()
         )
         if not existing_tour_info:
             for tour_info in route_data.get("tour_information", []):
-                tour = TourInformation(
+                tour = KomootTourInformation(
                     route_id=route.id,
                     type=tour_info["type"],
                     segments=tour_info["segments"],
@@ -98,11 +108,11 @@ def import_route_data(route_data: Dict) -> Route:
 
         # Check and create path points
         existing_path_points = (
-            db.query(PathPoint).filter(PathPoint.route_id == route.id).all()
+            db.query(KomootPathPoint).filter(KomootPathPoint.route_id == route.id).all()
         )
         if not existing_path_points:
             for point in route_data.get("path", []):
-                path_point = PathPoint(
+                path_point = KomootPathPoint(
                     route_id=route.id,
                     lat=point["location"]["lat"],
                     lng=point["location"]["lng"],
@@ -114,10 +124,12 @@ def import_route_data(route_data: Dict) -> Route:
                 db.add(path_point)
 
         # Check and create segments
-        existing_segments = db.query(Segment).filter(Segment.route_id == route.id).all()
+        existing_segments = (
+            db.query(KomootSegment).filter(KomootSegment.route_id == route.id).all()
+        )
         if not existing_segments:
             for segment in route_data.get("segments", []):
-                seg = Segment(
+                seg = KomootSegment(
                     route_id=route.id,
                     type=segment["type"],
                     from_index=segment["from"],
@@ -127,11 +139,13 @@ def import_route_data(route_data: Dict) -> Route:
 
         # Check and create surface summaries
         existing_surfaces = (
-            db.query(SurfaceSummary).filter(SurfaceSummary.route_id == route.id).all()
+            db.query(KomootSurfaceSummary)
+            .filter(KomootSurfaceSummary.route_id == route.id)
+            .all()
         )
         if not existing_surfaces:
             for surface in route_data.get("summary", {}).get("surfaces", []):
-                surface_summary = SurfaceSummary(
+                surface_summary = KomootSurfaceSummary(
                     route_id=route.id,
                     type=surface["type"],
                     amount=surface["amount"],
@@ -140,11 +154,13 @@ def import_route_data(route_data: Dict) -> Route:
 
         # Check and create way type summaries
         existing_way_types = (
-            db.query(WayTypeSummary).filter(WayTypeSummary.route_id == route.id).all()
+            db.query(KomootWayTypeSummary)
+            .filter(KomootWayTypeSummary.route_id == route.id)
+            .all()
         )
         if not existing_way_types:
             for way_type in route_data.get("summary", {}).get("way_types", []):
-                way_type_summary = WayTypeSummary(
+                way_type_summary = KomootWayTypeSummary(
                     route_id=route.id,
                     type=way_type["type"],
                     amount=way_type["amount"],
@@ -163,7 +179,7 @@ def import_route_data(route_data: Dict) -> Route:
         db.close()
 
 
-def import_routes_from_file(file_path: str) -> List[Route]:
+def import_routes_from_file(file_path: str) -> List[KomootRoute]:
     with open(file_path, "r") as f:
         routes_data = json.load(f)
 
@@ -180,4 +196,4 @@ def import_routes_from_file(file_path: str) -> List[Route]:
 
 
 if __name__ == "__main__":
-    import_routes_from_file("../routes/routes.json")
+    import_routes_from_file("gpx_files/routes.json")

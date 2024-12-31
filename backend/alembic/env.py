@@ -19,14 +19,14 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 from models import (
-    Difficulty,
-    PathPoint,
-    Route,
-    Segment,
-    StartPoint,
-    SurfaceSummary,
-    TourInformation,
-    WayTypeSummary,
+    KomootDifficulty,
+    KomootPathPoint,
+    KomootRoute,
+    KomootSegment,
+    KomootStartPoint,
+    KomootSurfaceSummary,
+    KomootTourInformation,
+    KomootWayTypeSummary,
 )
 
 target_metadata = SQLModel.metadata

@@ -12,7 +12,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import type { RouteCollection, RoutePopupData, ViewState } from "../../types/map";
 import { Route } from "../../types/route.ts";
-import { useGetRoutesQuery } from "../app/apiSlice.ts";
+import { useGetKomootRoutesQuery } from "../app/apiSlice.ts";
 import { setLatitude, setLongitude } from "./mapSlice";
 import { routesLayer } from "./mapStyle.ts";
 
@@ -26,13 +26,13 @@ function Map() {
     const [popupVisible, setPopupVisible] = useState(false);
     const [popupData, setPopupData] = useState<RoutePopupData | null>(null);
     const [viewState, setViewState] = useState<ViewState>({ longitude, latitude, zoom });
-    const { data: routesData } = useGetRoutesQuery({ limit: 100 });
+    const { data: komootRoutesData } = useGetKomootRoutesQuery({ limit: 100 });
     const dispatch = useDispatch();
 
     const routesFeaturesData = useMemo((): RouteCollection | null => {
-        if (!routesData) return null;
+        if (!komootRoutesData) return null;
 
-        const routeFeatures = routesData
+        const routeFeatures = komootRoutesData
             .filter((route: Route) => route.routePoints)
             .map((route: Route) => ({
                 id: route.id,
@@ -47,7 +47,7 @@ function Map() {
             type: "FeatureCollection",
             features: routeFeatures,
         };
-    }, [routesData]);
+    }, [komootRoutesData]);
 
     function getFirstRoute(event: MapLayerMouseEvent) {
         const features = event.features;
@@ -56,7 +56,7 @@ function Map() {
         const routeId = features[0].id;
         if (!routeId) return null;
 
-        return routesData?.find((route: Route) => route.id === routeId);
+        return komootRoutesData?.find((route: Route) => route.id === routeId);
     }
 
     function showRoutePopup(event: MapLayerMouseEvent) {
