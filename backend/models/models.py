@@ -6,15 +6,52 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
 from utils.gpx import get_track_points
 
+komoot_sport_to_slug = {
+    "racebike": "race_bike",
+    "mtb": "mountain_bike",
+    "mtb_easy": "gravel_bike",
+    "touringbicycle": "touring_bike",
+    "hike": "hike",
+    "run": "run",
+}
+
 
 def to_camel(string):
     return camelize(string)
+
+
+# Supporting models
 
 
 class Point(SQLModel):
     lat: float
     lng: float
     elevation: float
+
+
+class Sport(SQLModel, table=True):
+    __tablename__ = "sports"
+
+    id: int = Field(default=None, primary_key=True)
+    name: str
+    slug: Optional[str] = None
+
+    routes: list["Route"] = Relationship(back_populates="sport")
+
+    @staticmethod
+    def get_by_slug(session: Session, slug: str):
+        return session.exec(select(Sport).where(Sport.slug == slug)).first()
+
+    @staticmethod
+    def get_by_komoot_slug(session: Session, komoot_slug: str):
+        sport_slug = komoot_sport_to_slug[komoot_slug]
+        return session.exec(select(Sport).where(Sport.slug == sport_slug)).first()
+
+
+class SportPublic(SQLModel):
+    id: int
+    name: str
+    slug: Optional[str] = None
 
 
 # Komoot
@@ -56,6 +93,7 @@ class KomootRoute(SQLModel, table=True):
     tour_information: list["KomootTourInformation"] = Relationship(
         back_populates="route"
     )
+    routes: list["Route"] = Relationship(back_populates="komoot_route")
 
     class Config:
         populate_by_name = True
@@ -88,6 +126,20 @@ class KomootRoute(SQLModel, table=True):
             session.add(self)
             session.commit()
 
+    def update_route(self, session: Session):
+        route = Route.get_by_komoot_id(session, self.id)
+        if route is None:
+            route = Route()
+
+        route.name = self.name
+        route.komoot_id = self.id
+
+        sport = Sport.get_by_komoot_slug(session, self.sport)
+        route.sport_id = sport.id if sport else None
+
+        session.add(route)
+        session.commit()
+
 
 class KomootRoutePublic(SQLModel):
     id: int
@@ -98,8 +150,22 @@ class KomootRoutePublic(SQLModel):
     elevation_up: Optional[float] = None
     changed_at: Optional[datetime] = None
     gpx_file_path: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+        alias_generator = to_camel
+
+
+class KomootRoutePublicWithRoutePoints(SQLModel):
+    id: int
+    name: str
+    sport: str = None
+    type: Optional[str] = None
+    distance: Optional[float] = None
+    elevation_up: Optional[float] = None
+    changed_at: Optional[datetime] = None
+    gpx_file_path: Optional[str] = None
     route_points: Optional[List[Point]] = Field(sa_column=Column(JSON))
-    # route_points: Optional[str] = None
 
     class Config:
         populate_by_name = True
@@ -188,3 +254,43 @@ class KomootTourInformation(SQLModel, table=True):
 
     route_id: int | None = Field(default=None, foreign_key="komoot_routes.id")
     route: KomootRoute | None = Relationship(back_populates="tour_information")
+
+
+# Route
+
+
+class Route(SQLModel, table=True):
+    __tablename__ = "routes"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    sport_id: Optional[int] = Field(default=None, foreign_key="sports.id")
+    komoot_id: Optional[int] = Field(default=None, foreign_key="komoot_routes.id")
+
+    komoot_route: KomootRoute | None = Relationship(back_populates="routes")
+    sport: Sport | None = Relationship(back_populates="routes")
+
+    @staticmethod
+    def get_by_komoot_id(session: Session, komoot_id: int):
+        return session.exec(select(Route).where(Route.komoot_id == komoot_id)).first()
+
+    @staticmethod
+    def get_all(session: Session, limit: Optional[int] = 100):
+        if limit is None:
+            return session.exec(select(Route)).all()
+
+        return session.exec(select(Route).limit(limit)).all()
+
+
+class RoutePublic(SQLModel):
+    id: int
+    name: str
+    sport_id: Optional[int] = None
+    # komoot_id: Optional[int] = None
+
+    komoot_route: KomootRoutePublic | None = None
+    # sport: SportPublic | None = None
+
+    class Config:
+        populate_by_name = True
+        alias_generator = to_camel

@@ -11,3 +11,4 @@ aiohttp_retry
 uvicorn[standard]
 pyhumps
 sqlmodel
+python-slugify

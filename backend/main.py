@@ -1,14 +1,18 @@
 import json
 
 from database import engine
-from fastapi import APIRouter, FastAPI, WebSocketDisconnect
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from models.models import KomootRoute, KomootRoutePublic
-from sqlmodel import Session, SQLModel, select
+from models.models import (
+    KomootRoute,
+    KomootRoutePublic,
+    KomootRoutePublicWithRoutePoints,
+    Route,
+    RoutePublic,
+)
+from sqlmodel import Session
 from starlette.websockets import WebSocket
 from websockets.exceptions import ConnectionClosed
-
-SQLModel.metadata.create_all(bind=engine)
 
 app = FastAPI()
 router = APIRouter()
@@ -21,10 +25,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
 
 
 class ConnectionManager:
@@ -49,9 +49,9 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
+def get_session():
+    with Session(engine) as session:
+        yield session
 
 
 @router.get("/ws")
@@ -75,18 +75,60 @@ def home():
     return "response"
 
 
-@app.get("/komoot-route/{id}", response_model=KomootRoutePublic)
-def get_komoot_route(id: int):
-    with Session(engine) as session:
-        route = KomootRoute.get_by_id(session, id)
+@app.get("/route/{id}", response_model=RoutePublic)
+def get_route(*, session: Session = Depends(get_session), id: int):
+    route = Route.get_by_id(session, id)
+
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+
+    return route
+
+
+@app.get("/routes", response_model=list[RoutePublic])
+def get_routes(*, session: Session = Depends(get_session), limit: int = 1000):
+    routes = Route.get_all(session, limit)
+    return routes
+
+
+@app.get("/komoot-route/{id}", response_model=KomootRoutePublicWithRoutePoints)
+def get_komoot_route(*, session: Session = Depends(get_session), id: int):
+    route = KomootRoute.get_by_id(session, id)
+
+    if not route:
+        raise HTTPException(status_code=404, detail="Route not found")
+
     return route
 
 
 @app.get("/komoot-routes", response_model=list[KomootRoutePublic])
-def get_komoot_routes(limit: int = 1000):
-    with Session(engine) as session:
-        routes = KomootRoute.get_all(session, limit)
+def get_komoot_routes(*, session: Session = Depends(get_session), limit: int = 1000):
+    routes = KomootRoute.get_all(session, limit)
     return routes
+
+
+@app.get("/update-gpx")
+def update_gpx(
+    *,
+    session: Session = Depends(get_session),
+):
+    komoot_routes = KomootRoute.get_all(session, limit=None)
+    for komoot_route in komoot_routes:
+        if komoot_route.potential_route_update:
+            komoot_route.add_gpx_file(session)
+
+    return "done"
+
+
+@app.get("/update-komoot-routes")
+def update_komoot_routes(
+    *,
+    session: Session = Depends(get_session),
+):
+    komoot_routes = KomootRoute.get_all(session, limit=None)
+    for komoot_route in komoot_routes:
+        komoot_route.update_route(session)
+    return "done"
 
 
 @app.get("/test")
@@ -94,15 +136,3 @@ def test():
     json_data = '{"id": 1990783694, "name": "test", "sport": "racebike", "routePoints": {"lat": 1, "lng": 2, "elevation": 3}}'
     # json_data = '[["aa", "bb", "cc"]]'
     print(KomootRoutePublic.model_validate_json(json_data))
-
-
-@app.get("/update-gpx")
-def update_gpx():
-    with Session(engine) as session:
-        komoot_routes = KomootRoute.get_all(session, limit=None)
-        for komoot_route in komoot_routes:
-            if komoot_route.potential_route_update:
-                komoot_route.add_gpx_file(session)
-                # break
-
-        return "done"
