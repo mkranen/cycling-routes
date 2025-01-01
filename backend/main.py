@@ -112,10 +112,10 @@ def update_gpx(
     *,
     session: Session = Depends(get_session),
 ):
-    komoot_routes = KomootRoute.get_all(session, limit=None)
-    for komoot_route in komoot_routes:
-        if komoot_route.potential_route_update:
-            komoot_route.add_gpx_file(session)
+    routes = Route.get_all(session, limit=None)
+    for route in routes:
+        route.add_gpx_file(session)
+        route.add_route_points(session)
 
     return "done"
 

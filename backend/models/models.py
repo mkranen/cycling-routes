@@ -1,8 +1,8 @@
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
 
 from humps import camelize
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
 from utils.gpx import get_track_points
 
@@ -79,8 +79,6 @@ class KomootRoute(SQLModel, table=True):
     changed_at: datetime
     potential_route_update: bool = Field(default=False)
     gpx_file_path: Optional[str] = None
-    route_points: Optional[List[Point]] = Field(sa_column=Column(JSON), default=[])
-    # route_points: str
 
     start_point: list["KomootStartPoint"] = Relationship(back_populates="route")
     path_points: list["KomootPathPoint"] = Relationship(back_populates="route")
@@ -113,33 +111,21 @@ class KomootRoute(SQLModel, table=True):
 
         return session.exec(select(KomootRoute).limit(limit)).all()
 
-    def add_gpx_file(self, session: Session):
-        file_name = self.name.replace("/", "-") + ".gpx"
-        activity_type = self.sport
-        file_path = f"./gpx_files/{activity_type}/{file_name}"
-
-        with open(file_path, "r") as file:
-            file_string = file.read()
-            route_points = get_track_points(file_string)
-            self.route_points = route_points
-            self.gpx_file_path = file_name
-            session.add(self)
-            session.commit()
-
     def update_route(self, session: Session):
         route = Route.get_by_komoot_id(session, self.id)
         if route is None:
             route = Route()
 
-        route.name = self.name
-        route.komoot_id = self.id
+        if not route.name:
+            route.name = self.name
+        if not route.komoot_id:
+            route.komoot_id = self.id
         if not route.gpx_file_path:
             route.gpx_file_path = self.gpx_file_path
-        if not route.route_points:
-            route.route_points = self.route_points
 
-        sport = Sport.get_by_komoot_slug(session, self.sport)
-        route.sport_id = sport.id if sport else None
+        if not route.sport_id:
+            sport = Sport.get_by_komoot_slug(session, self.sport)
+            route.sport_id = sport.id if sport else None
 
         session.add(route)
         session.commit()
@@ -169,7 +155,6 @@ class KomootRoutePublicWithRoutePoints(SQLModel):
     elevation_up: Optional[float] = None
     changed_at: Optional[datetime] = None
     gpx_file_path: Optional[str] = None
-    route_points: Optional[List[Point]]
 
     class Config:
         populate_by_name = True
@@ -271,7 +256,9 @@ class Route(SQLModel, table=True):
     sport_id: Optional[int] = Field(default=None, foreign_key="sports.id")
     komoot_id: Optional[int] = Field(default=None, foreign_key="komoot_routes.id")
     gpx_file_path: Optional[str] = None
-    route_points: Optional[List[Point]] = Field(sa_column=Column(JSON), default=[])
+    route_points: Optional[List[List[float]]] = Field(
+        sa_column=Column(JSON), default=[]
+    )
 
     komoot_route: KomootRoute | None = Relationship(back_populates="routes")
     sport: Sport | None = Relationship(back_populates="routes")
@@ -287,12 +274,38 @@ class Route(SQLModel, table=True):
 
         return session.exec(select(Route).limit(limit)).all()
 
+    def add_gpx_file(self, session: Session):
+        if not self.name:
+            return
+
+        file_name = self.name.replace("/", "-") + ".gpx"
+        self.gpx_file_path = file_name
+        session.add(self)
+        session.commit()
+
+    def add_route_points(self, session: Session):
+        if not self.gpx_file_path or not self.sport:
+            return
+
+        activity_type = self.sport.slug
+        file_path = f"./gpx_files/{activity_type}/{self.gpx_file_path}"
+
+        file = Path(file_path)
+        if not file.exists():
+            return
+
+        file_string = file.read_text()
+        route_points = get_track_points(file_string)
+        self.route_points = route_points
+        session.add(self)
+        session.commit()
+
 
 class RoutePublic(SQLModel):
     id: int
     name: str
     sport_id: Optional[int] = None
-    route_points: Optional[List[Point]]
+    route_points: Optional[List[List[float]]]
 
     komoot_route: KomootRoutePublic | None = None
 

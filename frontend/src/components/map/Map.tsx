@@ -39,7 +39,7 @@ function Map() {
                 type: "Feature",
                 geometry: {
                     type: "LineString",
-                    coordinates: route.routePoints.map((point) => [point.lng, point.lat]),
+                    coordinates: route.routePoints.map((point) => [point[1], point[0]]),
                 },
             }));
 
