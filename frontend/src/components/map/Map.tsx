@@ -26,7 +26,9 @@ function Map() {
     const [popupVisible, setPopupVisible] = useState(false);
     const [popupData, setPopupData] = useState<RoutePopupData | null>(null);
     const [viewState, setViewState] = useState<ViewState>({ longitude, latitude, zoom });
-    const { data: routesData } = useGetRoutesQuery({ limit: 100 });
+    const limit = useSelector((state: RootState) => state.route.limit);
+    const sport = useSelector((state: RootState) => state.route.sport);
+    const { data: routesData } = useGetRoutesQuery({ limit, sport });
     const dispatch = useDispatch();
 
     const routesFeaturesData = useMemo((): RouteCollection | null => {

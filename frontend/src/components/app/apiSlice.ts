@@ -1,14 +1,21 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const routesApi = createApi({
-    reducerPath: "pokemonApi",
+    reducerPath: "routes",
     baseQuery: fetchBaseQuery({ baseUrl: "http://localhost:8081" }),
     endpoints: (builder) => ({
         getRoute: builder.query<any, any>({
             query: (id) => `route/${id}`,
         }),
         getRoutes: builder.query<any, any>({
-            query: ({ limit }) => (limit ? `routes?limit=${limit}` : "routes"),
+            query: ({ limit, sport }) => {
+                const params = new URLSearchParams();
+                if (limit) params.append("limit", limit);
+                if (sport) params.append("sport", sport);
+
+                const queryString = params.toString();
+                return params.size > 0 ? `routes?${queryString}` : "routes";
+            },
         }),
         getKomootRoute: builder.query<any, any>({
             query: (id) => `komoot-route/${id}`,

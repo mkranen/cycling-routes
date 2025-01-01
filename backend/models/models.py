@@ -1,9 +1,10 @@
+import enum
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
 from humps import camelize
-from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
+from sqlmodel import JSON, Column, Enum, Field, Relationship, Session, SQLModel, select
 from utils.gpx import get_track_points
 
 komoot_sport_to_slug = {
@@ -29,23 +30,22 @@ class Point(SQLModel):
     elevation: float
 
 
-class Sport(SQLModel, table=True):
-    __tablename__ = "sports"
+class Sport(str, enum.Enum):
+    race_bike = "race_bike"
+    mountain_bike = "mountain_bike"
+    gravel_bike = "gravel_bike"
+    touring_bike = "touring_bike"
+    hike = "hike"
+    run = "run"
 
-    id: int = Field(default=None, primary_key=True)
-    name: str
-    slug: Optional[str] = None
 
-    routes: list["Route"] = Relationship(back_populates="sport")
-
-    @staticmethod
-    def get_by_slug(session: Session, slug: str):
-        return session.exec(select(Sport).where(Sport.slug == slug)).first()
-
-    @staticmethod
-    def get_by_komoot_slug(session: Session, komoot_slug: str):
-        sport_slug = komoot_sport_to_slug[komoot_slug]
-        return session.exec(select(Sport).where(Sport.slug == sport_slug)).first()
+SportType: Enum = Enum(
+    Sport,
+    name="post_status_type",
+    create_constraint=True,
+    metadata=SQLModel.metadata,
+    validate_strings=True,
+)
 
 
 class SportPublic(SQLModel):
@@ -123,9 +123,8 @@ class KomootRoute(SQLModel, table=True):
         if not route.gpx_file_path:
             route.gpx_file_path = self.gpx_file_path
 
-        if not route.sport_id:
-            sport = Sport.get_by_komoot_slug(session, self.sport)
-            route.sport_id = sport.id if sport else None
+        if not route.sport and self.sport in komoot_sport_to_slug:
+            route.sport = Sport(komoot_sport_to_slug[self.sport])
 
         session.add(route)
         session.commit()
@@ -253,7 +252,7 @@ class Route(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    sport_id: Optional[int] = Field(default=None, foreign_key="sports.id")
+    sport: Sport = Field(sa_column=Column(Enum(Sport)))
     komoot_id: Optional[int] = Field(default=None, foreign_key="komoot_routes.id")
     gpx_file_path: Optional[str] = None
     route_points: Optional[List[List[float]]] = Field(
@@ -261,18 +260,25 @@ class Route(SQLModel, table=True):
     )
 
     komoot_route: KomootRoute | None = Relationship(back_populates="routes")
-    sport: Sport | None = Relationship(back_populates="routes")
+    # sport: Sport | None = Relationship(back_populates="routes")
 
     @staticmethod
     def get_by_komoot_id(session: Session, komoot_id: int):
         return session.exec(select(Route).where(Route.komoot_id == komoot_id)).first()
 
     @staticmethod
-    def get_all(session: Session, limit: Optional[int] = 100):
-        if limit is None:
-            return session.exec(select(Route)).all()
+    def get_all(
+        session: Session, sport: Optional[Sport] = None, limit: Optional[int] = 100
+    ):
+        query = select(Route)
 
-        return session.exec(select(Route).limit(limit)).all()
+        if limit is not None:
+            query = query.limit(limit)
+
+        if sport is not None:
+            query = query.where(Route.sport == sport)
+
+        return session.exec(query).all()
 
     def add_gpx_file(self, session: Session):
         if not self.name:
@@ -304,7 +310,7 @@ class Route(SQLModel, table=True):
 class RoutePublic(SQLModel):
     id: int
     name: str
-    sport_id: Optional[int] = None
+    sport: Optional[Sport] = None
     route_points: Optional[List[List[float]]]
 
     komoot_route: KomootRoutePublic | None = None
