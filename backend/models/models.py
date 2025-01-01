@@ -133,6 +133,10 @@ class KomootRoute(SQLModel, table=True):
 
         route.name = self.name
         route.komoot_id = self.id
+        if not route.gpx_file_path:
+            route.gpx_file_path = self.gpx_file_path
+        if not route.route_points:
+            route.route_points = self.route_points
 
         sport = Sport.get_by_komoot_slug(session, self.sport)
         route.sport_id = sport.id if sport else None
@@ -165,7 +169,7 @@ class KomootRoutePublicWithRoutePoints(SQLModel):
     elevation_up: Optional[float] = None
     changed_at: Optional[datetime] = None
     gpx_file_path: Optional[str] = None
-    route_points: Optional[List[Point]] = Field(sa_column=Column(JSON))
+    route_points: Optional[List[Point]]
 
     class Config:
         populate_by_name = True
@@ -266,6 +270,8 @@ class Route(SQLModel, table=True):
     name: str
     sport_id: Optional[int] = Field(default=None, foreign_key="sports.id")
     komoot_id: Optional[int] = Field(default=None, foreign_key="komoot_routes.id")
+    gpx_file_path: Optional[str] = None
+    route_points: Optional[List[Point]] = Field(sa_column=Column(JSON), default=[])
 
     komoot_route: KomootRoute | None = Relationship(back_populates="routes")
     sport: Sport | None = Relationship(back_populates="routes")
@@ -286,10 +292,9 @@ class RoutePublic(SQLModel):
     id: int
     name: str
     sport_id: Optional[int] = None
-    # komoot_id: Optional[int] = None
+    route_points: Optional[List[Point]]
 
     komoot_route: KomootRoutePublic | None = None
-    # sport: SportPublic | None = None
 
     class Config:
         populate_by_name = True
