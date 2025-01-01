@@ -101,7 +101,7 @@ def get_komoot_route(*, session: Session = Depends(get_session), id: int):
     return route
 
 
-@app.get("/komoot-routes", response_model=list[KomootRoutePublic])
+@app.get("/komoot-routes", response_model=list[KomootRoutePublicWithRoutePoints])
 def get_komoot_routes(*, session: Session = Depends(get_session), limit: int = 1000):
     routes = KomootRoute.get_all(session, limit)
     return routes
