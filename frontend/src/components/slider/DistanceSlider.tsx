@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { setMaxDistance, setMinDistance } from "../routes/routeSlice";
 
-export default function Slider({ onChange }: { onChange: (value: number[]) => void }) {
+export default function DistanceSlider({ onChange }: { onChange?: (value: number[]) => void }) {
     const dispatch = useDispatch();
     const minDistance = useSelector((state: RootState) => state.route.minDistance);
     const maxDistance = useSelector((state: RootState) => state.route.maxDistance);
@@ -24,12 +24,12 @@ export default function Slider({ onChange }: { onChange: (value: number[]) => vo
                 onValueChange={([min, max]) => {
                     setLocalMinDistance(min);
                     setLocalMaxDistance(max);
-                    onChange([min, max]);
+                    onChange?.([min, max]);
                 }}
                 onValueCommit={([min, max]) => {
                     dispatch(setMinDistance(min));
                     dispatch(setMaxDistance(max));
-                    onChange([min, max]);
+                    onChange?.([min, max]);
                 }}
             >
                 <RadixSlider.Track className="relative w-full h-[3px] rounded-full bg-gray-200">
