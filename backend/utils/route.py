@@ -1,6 +1,10 @@
 import xml.etree.ElementTree as ET
 from typing import List, Tuple
 
+LAT = 0
+LNG = 1
+ELE = 2
+
 
 def get_track_points(file_string: str) -> List[Tuple[float, float, float]]:
     """
@@ -31,3 +35,7 @@ def get_track_points(file_string: str) -> List[Tuple[float, float, float]]:
         points.append([latitude, longitude, elevation])
 
     return points
+
+
+def get_min_max(points: List[Tuple[float, float, float]], key: int):
+    return min(point[key] for point in points), max(point[key] for point in points)
