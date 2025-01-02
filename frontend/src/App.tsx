@@ -6,7 +6,7 @@ import Sidebar from "./components/routes/Sidebar";
 function App() {
     return (
         <div className="h-dvh w-dvw">
-            <div className="h-16 p-4 navbar bg-base-300">
+            <div className="h-16 p-4 bg-gray-900 navbar text-base-100">
                 <div className="text-3xl">Cycling routes</div>
             </div>
             <div className="flex flex-row w-full h-full bg-base-100">
