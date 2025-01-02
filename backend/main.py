@@ -130,6 +130,17 @@ def update_gpx(
     return "done"
 
 
+@app.get("/update-bounding-boxes")
+def update_bounding_boxes(
+    *,
+    session: Session = Depends(get_session),
+):
+    routes = Route.get_all(session, limit=None)
+    for route in routes:
+        route.populate_bounding_box(session)
+    return "done"
+
+
 @app.get("/update-komoot-routes")
 def update_komoot_routes(
     *,

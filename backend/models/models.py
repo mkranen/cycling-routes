@@ -6,7 +6,7 @@ from typing import List, Optional
 from humps import camelize
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
-from utils.gpx import get_track_points
+from utils.route import LAT, LNG, get_min_max, get_track_points
 
 komoot_sport_to_slug = {
     "racebike": "race_bike",
@@ -263,6 +263,10 @@ class Route(SQLModel, table=True):
     route_points: Optional[List[List[float]]] = Field(
         sa_column=Column(JSON), default=[]
     )
+    min_lat: Optional[float] = None
+    min_lng: Optional[float] = None
+    max_lat: Optional[float] = None
+    max_lng: Optional[float] = None
 
     komoot: KomootRoute | None = Relationship(back_populates="routes")
     # sport: Sport | None = Relationship(back_populates="routes")
@@ -308,7 +312,7 @@ class Route(SQLModel, table=True):
         if not self.gpx_file_path or not self.sport:
             return
 
-        activity_type = self.sport.slug
+        activity_type = self.sport
         file_path = f"./gpx_files/{activity_type}/{self.gpx_file_path}"
 
         file = Path(file_path)
@@ -318,6 +322,19 @@ class Route(SQLModel, table=True):
         file_string = file.read_text()
         route_points = get_track_points(file_string)
         self.route_points = route_points
+        self.min_lat, self.max_lat = get_min_max(self.route_points, LAT)
+        self.min_lng, self.max_lng = get_min_max(self.route_points, LNG)
+
+        session.add(self)
+        session.commit()
+
+    def populate_bounding_box(self, session: Session):
+        if not self.route_points:
+            return
+
+        self.min_lat, self.max_lat = get_min_max(self.route_points, LAT)
+        self.min_lng, self.max_lng = get_min_max(self.route_points, LNG)
+
         session.add(self)
         session.commit()
 
