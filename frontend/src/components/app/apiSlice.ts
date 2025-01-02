@@ -8,11 +8,13 @@ export const routesApi = createApi({
             query: (id) => `route/${id}`,
         }),
         getRoutes: builder.query<any, any>({
-            query: ({ sport, minDistance, maxDistance, limit }) => {
+            query: ({ sport, minDistance, maxDistance, mapBounds, limit }) => {
                 const params = new URLSearchParams();
                 if (sport) params.append("sport", sport);
                 if (minDistance) params.append("min_distance", minDistance);
                 if (maxDistance) params.append("max_distance", maxDistance);
+                if (mapBounds) params.append("min_bounds", mapBounds[0]);
+                if (mapBounds) params.append("max_bounds", mapBounds[1]);
                 if (limit) params.append("limit", limit);
 
                 const queryString = params.toString();

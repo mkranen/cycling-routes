@@ -281,6 +281,8 @@ class Route(SQLModel, table=True):
         sport: Optional[Sport] = None,
         minDistance: Optional[float] = None,
         maxDistance: Optional[float] = None,
+        minBounds: Optional[List[float]] = None,
+        maxBounds: Optional[List[float]] = None,
         limit: Optional[int] = 100,
     ):
         query = select(Route)
@@ -290,6 +292,14 @@ class Route(SQLModel, table=True):
 
         if maxDistance is not None:
             query = query.where(Route.distance <= maxDistance)
+
+        if minBounds is not None:
+            query = query.where(Route.max_lat >= minBounds[0])
+            query = query.where(Route.max_lng >= minBounds[1])
+
+        if maxBounds is not None:
+            query = query.where(Route.min_lat <= maxBounds[0])
+            query = query.where(Route.min_lng <= maxBounds[1])
 
         if sport is not None:
             query = query.where(Route.sport == sport)

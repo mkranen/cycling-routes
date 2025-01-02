@@ -13,7 +13,7 @@ import { RootState } from "../../store";
 import type { RouteCollection, RoutePopupData, ViewState } from "../../types/map";
 import { Route } from "../../types/route.ts";
 import { useGetRoutesQuery } from "../app/apiSlice.ts";
-import { setLatitude, setLongitude } from "./mapSlice";
+import { setBounds, setLatitude, setLongitude } from "./mapSlice";
 import { routesLayer } from "./mapStyle.ts";
 
 function Map() {
@@ -30,7 +30,8 @@ function Map() {
     const sport = useSelector((state: RootState) => state.route.sport);
     const minDistance = useSelector((state: RootState) => state.route.minDistance);
     const maxDistance = useSelector((state: RootState) => state.route.maxDistance);
-    const { data: routesData } = useGetRoutesQuery({ limit, sport, minDistance, maxDistance });
+    const mapBounds = useSelector((state: RootState) => state.map.bounds);
+    const { data: routesData } = useGetRoutesQuery({ limit, sport, minDistance, maxDistance, mapBounds });
     const dispatch = useDispatch();
 
     const routesFeaturesData = useMemo((): RouteCollection | null => {
@@ -94,6 +95,13 @@ function Map() {
         setHoveredRouteId(null);
     }
 
+    function updateBounds() {
+        if (!mapRef.current) return;
+
+        const bounds = mapRef.current.getBounds().toArray();
+        dispatch(setBounds(bounds));
+    }
+
     return (
         <MaplibreMap
             {...viewState}
@@ -102,6 +110,7 @@ function Map() {
             interactiveLayerIds={interactiveLayerIds}
             mapStyle={`https://api.maptiler.com/maps/streets/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`}
             onMove={(evt) => setViewState(evt.viewState)}
+            onMoveEnd={() => updateBounds()}
             onClick={(event: MapLayerMouseEvent) => {
                 const route = getFirstRoute(event);
                 let url = "";

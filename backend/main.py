@@ -1,4 +1,5 @@
 import json
+from typing import List
 
 from database import engine
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, WebSocketDisconnect
@@ -92,12 +93,33 @@ def get_routes(
     sport: str = None,
     min_distance: float = None,
     max_distance: float = None,
+    min_bounds: str = None,
+    max_bounds: str = None,
     limit: int = 1000,
 ):
     min_distance = min_distance * 1000 if min_distance else None
     max_distance = max_distance * 1000 if max_distance else None
 
-    routes = Route.get_all(session, sport, min_distance, max_distance, limit)
+    min_bounds_list = (
+        list(reversed([float(i) for i in min_bounds.split(",")]))
+        if min_bounds
+        else None
+    )
+    max_bounds_list = (
+        list(reversed([float(i) for i in max_bounds.split(",")]))
+        if max_bounds
+        else None
+    )
+
+    routes = Route.get_all(
+        session,
+        sport,
+        min_distance,
+        max_distance,
+        min_bounds_list,
+        max_bounds_list,
+        limit,
+    )
     return routes
 
 
