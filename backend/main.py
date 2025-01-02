@@ -94,9 +94,10 @@ def get_routes(
     max_distance: float = None,
     limit: int = 1000,
 ):
-    routes = Route.get_all(
-        session, sport, min_distance * 1000, max_distance * 1000, limit
-    )
+    min_distance = min_distance * 1000 if min_distance else None
+    max_distance = max_distance * 1000 if max_distance else None
+
+    routes = Route.get_all(session, sport, min_distance, max_distance, limit)
     return routes
 
 
