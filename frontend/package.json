@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-slider": "^1.2.2",
     "@reduxjs/toolkit": "^2.5.0",
     "@vis.gl/react-maplibre": "^1.0.0-alpha.4",
     "leaflet": "^1.9.4",

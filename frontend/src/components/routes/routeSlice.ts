@@ -21,8 +21,8 @@ interface Route {
 const initialState: Route = {
     limit: 100,
     sport: null,
-    minDistance: null,
-    maxDistance: null,
+    minDistance: 40,
+    maxDistance: 60,
 };
 
 export const routeSlice = createSlice({
