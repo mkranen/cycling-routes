@@ -93,7 +93,7 @@ class KomootRoute(SQLModel, table=True):
     tour_information: list["KomootTourInformation"] = Relationship(
         back_populates="route"
     )
-    routes: list["Route"] = Relationship(back_populates="komoot_route")
+    routes: list["Route"] = Relationship(back_populates="komoot")
 
     class Config:
         populate_by_name = True
@@ -264,7 +264,7 @@ class Route(SQLModel, table=True):
         sa_column=Column(JSON), default=[]
     )
 
-    komoot_route: KomootRoute | None = Relationship(back_populates="routes")
+    komoot: KomootRoute | None = Relationship(back_populates="routes")
     # sport: Sport | None = Relationship(back_populates="routes")
 
     @staticmethod
@@ -328,7 +328,7 @@ class RoutePublic(SQLModel):
     sport: Optional[Sport] = None
     route_points: Optional[List[List[float]]]
 
-    komoot_route: KomootRoutePublic | None = None
+    komoot: KomootRoutePublic | None = None
 
     class Config:
         populate_by_name = True

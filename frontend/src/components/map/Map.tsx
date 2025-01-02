@@ -104,6 +104,15 @@ function Map() {
             onMove={(evt) => setViewState(evt.viewState)}
             onClick={(event: MapLayerMouseEvent) => {
                 const route = getFirstRoute(event);
+                let url = "";
+                if (!route) {
+                    return;
+                } else if (route.komoot) {
+                    url = `https://www.komoot.com/tour/${route.komoot.id}`;
+                } else if (route.strava) {
+                    url = `https://www.strava.com/routes/${route.strava.id}`;
+                }
+                window.open(url, "_blank");
             }}
             onMouseEnter={(event: MapLayerMouseEvent) => {
                 showRoutePopup(event);
