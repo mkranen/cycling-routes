@@ -87,9 +87,16 @@ def get_route(*, session: Session = Depends(get_session), id: int):
 
 @app.get("/routes", response_model=list[RoutePublic])
 def get_routes(
-    *, session: Session = Depends(get_session), sport: str = None, limit: int = 1000
+    *,
+    session: Session = Depends(get_session),
+    sport: str = None,
+    min_distance: float = None,
+    max_distance: float = None,
+    limit: int = 1000,
 ):
-    routes = Route.get_all(session, sport, limit)
+    routes = Route.get_all(
+        session, sport, min_distance * 1000, max_distance * 1000, limit
+    )
     return routes
 
 

@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import List, Optional
 
 from humps import camelize
-from sqlmodel import JSON, Column, Enum, Field, Relationship, Session, SQLModel, select
+from sqlalchemy.dialects.postgresql import ENUM
+from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
 from utils.gpx import get_track_points
 
 komoot_sport_to_slug = {
@@ -39,10 +40,11 @@ class Sport(str, enum.Enum):
     run = "run"
 
 
-SportType: Enum = Enum(
+SportType: ENUM = ENUM(
     Sport,
-    name="post_status_type",
+    name="sport",
     create_constraint=True,
+    create_type=False,
     metadata=SQLModel.metadata,
     validate_strings=True,
 )
@@ -120,6 +122,8 @@ class KomootRoute(SQLModel, table=True):
             route.name = self.name
         if not route.komoot_id:
             route.komoot_id = self.id
+        if not route.distance:
+            route.distance = self.distance
         if not route.gpx_file_path:
             route.gpx_file_path = self.gpx_file_path
 
@@ -252,7 +256,8 @@ class Route(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    sport: Sport = Field(sa_column=Column(Enum(Sport)))
+    sport: Sport = Field(sa_column=Column(ENUM(Sport)))
+    distance: Optional[float] = None
     komoot_id: Optional[int] = Field(default=None, foreign_key="komoot_routes.id")
     gpx_file_path: Optional[str] = None
     route_points: Optional[List[List[float]]] = Field(
@@ -268,15 +273,25 @@ class Route(SQLModel, table=True):
 
     @staticmethod
     def get_all(
-        session: Session, sport: Optional[Sport] = None, limit: Optional[int] = 100
+        session: Session,
+        sport: Optional[Sport] = None,
+        minDistance: Optional[float] = None,
+        maxDistance: Optional[float] = None,
+        limit: Optional[int] = 100,
     ):
         query = select(Route)
 
-        if limit is not None:
-            query = query.limit(limit)
+        if minDistance is not None:
+            query = query.where(Route.distance >= minDistance)
+
+        if maxDistance is not None:
+            query = query.where(Route.distance <= maxDistance)
 
         if sport is not None:
             query = query.where(Route.sport == sport)
+
+        if limit is not None:
+            query = query.limit(limit)
 
         return session.exec(query).all()
 

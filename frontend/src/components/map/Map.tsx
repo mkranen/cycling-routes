@@ -28,7 +28,9 @@ function Map() {
     const [viewState, setViewState] = useState<ViewState>({ longitude, latitude, zoom });
     const limit = useSelector((state: RootState) => state.route.limit);
     const sport = useSelector((state: RootState) => state.route.sport);
-    const { data: routesData } = useGetRoutesQuery({ limit, sport });
+    const minDistance = useSelector((state: RootState) => state.route.minDistance);
+    const maxDistance = useSelector((state: RootState) => state.route.maxDistance);
+    const { data: routesData } = useGetRoutesQuery({ limit, sport, minDistance, maxDistance });
     const dispatch = useDispatch();
 
     const routesFeaturesData = useMemo((): RouteCollection | null => {
