@@ -1,5 +1,5 @@
 import * as RadixSlider from "@radix-ui/react-slider";
-import React from "react";
+import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { setMaxDistance, setMinDistance } from "../routes/routeSlice";
@@ -8,6 +8,8 @@ export default function Slider({ onChange }: { onChange: (value: number[]) => vo
     const dispatch = useDispatch();
     const minDistance = useSelector((state: RootState) => state.route.minDistance);
     const maxDistance = useSelector((state: RootState) => state.route.maxDistance);
+    const [localMinDistance, setLocalMinDistance] = useState(minDistance || 0);
+    const [localMaxDistance, setLocalMaxDistance] = useState(maxDistance || 100);
     const minRange = 0;
     const maxRange = 200;
 
@@ -15,11 +17,16 @@ export default function Slider({ onChange }: { onChange: (value: number[]) => vo
         <form>
             <RadixSlider.Root
                 className="relative flex items-center w-full h-5 select-none touch-none"
-                defaultValue={[minDistance || 0, maxDistance || 100]}
+                defaultValue={[localMinDistance, localMaxDistance]}
                 max={maxRange}
                 min={minRange}
                 step={1}
                 onValueChange={([min, max]) => {
+                    setLocalMinDistance(min);
+                    setLocalMaxDistance(max);
+                    onChange([min, max]);
+                }}
+                onValueCommit={([min, max]) => {
                     dispatch(setMinDistance(min));
                     dispatch(setMaxDistance(max));
                     onChange([min, max]);
