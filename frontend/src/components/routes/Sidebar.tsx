@@ -19,7 +19,7 @@ export default function Sidebar() {
                         <span className="text-base label-text text-base-100">Sport</span>
                     </label>
                     <select
-                        className="w-full max-w-xs select select-bordered"
+                        className="w-full max-w-xs text-base-content select select-bordered"
                         onChange={(e) => dispatch(setSport(e.target.value as Sport))}
                         value={sport || ""}
                     >
