@@ -108,7 +108,11 @@ function Map() {
             ref={mapRef}
             className="w-full h-full"
             interactiveLayerIds={interactiveLayerIds}
-            mapStyle={`https://api.maptiler.com/maps/streets/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`}
+            // mapStyle={`https://api.maptiler.com/maps/streets/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`}
+            // mapStyle={`https://api.tomtom.com/style/2/custom/style/dG9tdG9tQEBANEFTRUE5QUt5TFBKdWRqbzs5NDg2NWRjYy1hZTgyLTRmMTYtYmNiNS05ZDQwOTY0OTZjMmU=.json?key=${import.meta.env.VITE_TOMTOM_KEY}`}
+            mapStyle={`https://api.tomtom.com/style/2/custom/style/dG9tdG9tQEBANEFTRUE5QUt5TFBKdWRqbztiODVmNTFmYS00OTNlLTQ4ZjEtYjYwZC1mZmU0N2JlMjljODY=/drafts/0.json?key=${
+                import.meta.env.VITE_TOMTOM_KEY
+            }`}
             onMove={(evt) => setViewState(evt.viewState)}
             onMoveEnd={() => updateBounds()}
             onClick={(event: MapLayerMouseEvent) => {
