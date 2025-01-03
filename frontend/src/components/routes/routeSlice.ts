@@ -19,7 +19,7 @@ interface Route {
 }
 
 const initialState: Route = {
-    limit: 100,
+    limit: 200,
     sport: null,
     minDistance: 40,
     maxDistance: 60,
