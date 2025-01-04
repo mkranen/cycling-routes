@@ -5,7 +5,6 @@ interface MapState {
     longitude: number;
     latitude: number;
     zoom: number;
-    interactiveLayerIds: string[];
     bounds: LngLatLike | null;
 }
 
@@ -13,7 +12,6 @@ const initialState: MapState = {
     longitude: 5.13381188435385,
     latitude: 52.11015993159475,
     zoom: 11,
-    interactiveLayerIds: ["routes"],
     bounds: null,
 };
 
@@ -30,14 +28,11 @@ export const mapSlice = createSlice({
         setZoom: (state, action: PayloadAction<number>) => {
             state.zoom = action.payload;
         },
-        setInteractiveLayerIds: (state, action: PayloadAction<string[]>) => {
-            state.interactiveLayerIds = action.payload;
-        },
         setBounds: (state, action: PayloadAction<LngLatLike | null>) => {
             state.bounds = action.payload;
         },
     },
 });
 
-export const { setLongitude, setLatitude, setZoom, setInteractiveLayerIds, setBounds } = mapSlice.actions;
+export const { setLongitude, setLatitude, setZoom, setBounds } = mapSlice.actions;
 export default mapSlice.reducer;

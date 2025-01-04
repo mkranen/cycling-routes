@@ -15,14 +15,13 @@ import { RouteType } from "../../types/route.ts";
 import { useGetRoutesQuery } from "../app/apiSlice.ts";
 import { setSelectedRoute } from "../routes/routeSlice.ts";
 import { setBounds, setLatitude, setLongitude } from "./mapSlice";
-import { routesLayer } from "./mapStyle.ts";
+import { highlightedRoutesLayer, routesLayer } from "./mapStyle.ts";
 
 function Map() {
     const mapRef = useRef<MapRef>(null);
     const latitude = useSelector((state: RootState) => state.map.latitude);
     const longitude = useSelector((state: RootState) => state.map.longitude);
     const zoom = useSelector((state: RootState) => state.map.zoom);
-    const interactiveLayerIds = useSelector((state: RootState) => state.map.interactiveLayerIds);
     const [hoveredRouteId, setHoveredRouteId] = useState<number | null>(null);
     const [popupVisible, setPopupVisible] = useState(false);
     const [popupData, setPopupData] = useState<RoutePopupData | null>(null);
@@ -65,7 +64,7 @@ function Map() {
         return routesData?.find((route: RouteType) => route.id === routeId);
     }
 
-    function showRoutePopup(event: MapLayerMouseEvent) {
+    function highlightRoute(event: MapLayerMouseEvent) {
         const route = getFirstRoute(event);
         if (!route) {
             hideRoutePopup();
@@ -108,7 +107,7 @@ function Map() {
             {...viewState}
             ref={mapRef}
             className="w-full h-full"
-            interactiveLayerIds={interactiveLayerIds}
+            interactiveLayerIds={["routes"]}
             // mapStyle={`https://api.maptiler.com/maps/streets/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`}
             // mapStyle={`https://api.tomtom.com/style/2/custom/style/dG9tdG9tQEBANEFTRUE5QUt5TFBKdWRqbzs5NDg2NWRjYy1hZTgyLTRmMTYtYmNiNS05ZDQwOTY0OTZjMmU=.json?key=${import.meta.env.VITE_TOMTOM_KEY}`}
             mapStyle={`https://api.tomtom.com/style/2/custom/style/dG9tdG9tQEBANEFTRUE5QUt5TFBKdWRqbztiODVmNTFmYS00OTNlLTQ4ZjEtYjYwZC1mZmU0N2JlMjljODY=/drafts/0.json?key=${
@@ -125,7 +124,7 @@ function Map() {
                 }
             }}
             onMouseEnter={(event: MapLayerMouseEvent) => {
-                showRoutePopup(event);
+                highlightRoute(event);
                 if (mapRef.current) {
                     mapRef.current.getCanvas().style.cursor = "pointer";
                 }
@@ -152,7 +151,8 @@ function Map() {
 
             {routesFeaturesData && (
                 <Source id="routes" type="geojson" data={routesFeaturesData}>
-                    <Layer {...routesLayer} source="routes" />
+                    <Layer {...highlightedRoutesLayer} source="routes-highlight" />
+                    <Layer beforeId="highlighted-routes" {...routesLayer} source="routes" />
                 </Source>
             )}
 
