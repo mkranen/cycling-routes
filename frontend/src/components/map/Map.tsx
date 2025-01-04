@@ -9,10 +9,11 @@ import {
 } from "@vis.gl/react-maplibre";
 import React, { useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "../../store";
+import { RootState } from "../../app/store.ts";
 import type { RouteCollection, RoutePopupData, ViewState } from "../../types/map";
-import { Route } from "../../types/route.ts";
+import { RouteType } from "../../types/route.ts";
 import { useGetRoutesQuery } from "../app/apiSlice.ts";
+import { setSelectedRoute } from "../routes/routeSlice.ts";
 import { setBounds, setLatitude, setLongitude } from "./mapSlice";
 import { routesLayer } from "./mapStyle.ts";
 
@@ -38,8 +39,8 @@ function Map() {
         if (!routesData) return null;
 
         const routeFeatures = routesData
-            .filter((route: Route) => route.routePoints)
-            .map((route: Route) => ({
+            .filter((route: RouteType) => route.routePoints)
+            .map((route: RouteType) => ({
                 id: route.id,
                 type: "Feature",
                 geometry: {
@@ -61,7 +62,7 @@ function Map() {
         const routeId = features[0].id;
         if (!routeId) return null;
 
-        return routesData?.find((route: Route) => route.id === routeId);
+        return routesData?.find((route: RouteType) => route.id === routeId);
     }
 
     function showRoutePopup(event: MapLayerMouseEvent) {
@@ -117,15 +118,11 @@ function Map() {
             onMoveEnd={() => updateBounds()}
             onClick={(event: MapLayerMouseEvent) => {
                 const route = getFirstRoute(event);
-                let url = "";
-                if (!route) {
-                    return;
-                } else if (route.komoot) {
-                    url = `https://www.komoot.com/tour/${route.komoot.id}`;
-                } else if (route.strava) {
-                    url = `https://www.strava.com/routes/${route.strava.id}`;
+                if (route) {
+                    dispatch(setSelectedRoute(route));
+                } else {
+                    dispatch(setSelectedRoute(null));
                 }
-                window.open(url, "_blank");
             }}
             onMouseEnter={(event: MapLayerMouseEvent) => {
                 showRoutePopup(event);

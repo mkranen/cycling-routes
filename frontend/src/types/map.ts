@@ -1,5 +1,5 @@
 import type { LngLatLike, MapLayerMouseEvent } from "@vis.gl/react-maplibre";
-import type { Route } from "./route";
+import type { RouteType } from "./route";
 
 // TODO: Replace with @vis.gl/react-maplibre ViewState
 export interface ViewState {
@@ -25,7 +25,7 @@ export interface RouteCollection {
 }
 
 export interface RoutePopupData {
-    route: Route;
+    route: RouteType;
     event: MapLayerMouseEvent;
     coordinates: LngLatLike;
 }

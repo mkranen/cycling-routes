@@ -1,8 +1,8 @@
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "../../store";
+import { RootState } from "../../app/store";
+import { setSport, Sport, sports } from "../routes/routeSlice";
 import DistanceSlider from "../slider/DistanceSlider";
-import { setSport, Sport, sports } from "./routeSlice";
 
 export default function Sidebar() {
     const sport = useSelector((state: RootState) => state.route.sport);

@@ -17,27 +17,20 @@ export type RoutePoint = {
     time?: string;
 };
 
-export type Route = {
-    type: string;
-    kcalResting: number;
-    changedAt: string;
-    id: number;
-    distance: number;
-    potentialRouteUpdate: boolean;
-    name: string;
-    duration: number;
-    gpxFilePath: string | null;
-    source: string;
-    elevationUp: number;
-    routingVersion: string | null;
-    elevationDown: number;
-    status: string;
-    sport: "racebike" | "mtb_easy" | "touringbicycle" | "hike";
-    date: string;
-    query: string;
-    kcalActive: number;
-    constitution: number;
+export type RouteType = {
+    id?: number;
+    name?: string;
+    distance?: number;
+    source?: string;
+    // duration?: number;
+    // elevationUp?: number;
+    // elevationDown?: number;
+    sport?: "racebike" | "mtb_easy" | "touringbicycle" | "hike";
     routePoints: RoutePoint[];
+    komoot?: {
+        id: string;
+    };
+    strava?: {
+        id: string;
+    };
 };
-
-export type Routes = Route[];

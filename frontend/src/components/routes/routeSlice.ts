@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { RouteType } from "../../types/route";
 
 export const sports = {
     race_bike: "Race bike",
@@ -11,14 +12,16 @@ export const sports = {
 
 export type Sport = "race_bike" | "mountain_bike" | "gravel_bike" | "touring_bike" | "hike" | "run" | null;
 
-interface Route {
+interface RouteState {
+    selectedRoute: RouteType | null;
     limit: number;
     sport: Sport;
     minDistance: number | null;
     maxDistance: number | null;
 }
 
-const initialState: Route = {
+const initialState: RouteState = {
+    selectedRoute: null,
     limit: 200,
     sport: null,
     minDistance: 40,
@@ -29,6 +32,9 @@ export const routeSlice = createSlice({
     name: "route",
     initialState,
     reducers: {
+        setSelectedRoute: (state, action: PayloadAction<RouteType | null>) => {
+            state.selectedRoute = action.payload;
+        },
         setLimit: (state, action: PayloadAction<number>) => {
             state.limit = action.payload;
         },
@@ -44,5 +50,5 @@ export const routeSlice = createSlice({
     },
 });
 
-export const { setLimit, setSport, setMinDistance, setMaxDistance } = routeSlice.actions;
+export const { setSelectedRoute, setLimit, setSport, setMinDistance, setMaxDistance } = routeSlice.actions;
 export default routeSlice.reducer;

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from humps import camelize
+from pydantic import computed_field
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
 from utils.route import LAT, LNG, get_min_max, get_track_points
@@ -272,6 +273,10 @@ class Route(SQLModel, table=True):
     # sport: Sport | None = Relationship(back_populates="routes")
 
     @staticmethod
+    def get_by_id(session: Session, id: int):
+        return session.exec(select(Route).where(Route.id == id)).first()
+
+    @staticmethod
     def get_by_komoot_id(session: Session, komoot_id: int):
         return session.exec(select(Route).where(Route.komoot_id == komoot_id)).first()
 
@@ -353,7 +358,13 @@ class RoutePublic(SQLModel):
     id: int
     name: str
     sport: Optional[Sport] = None
+    distance: Optional[float] = None
     route_points: Optional[List[List[float]]]
+
+    @computed_field(description="source")
+    @property
+    def source(self) -> str:
+        return "Komoot" if self.komoot else "Strava"
 
     komoot: KomootRoutePublic | None = None
 

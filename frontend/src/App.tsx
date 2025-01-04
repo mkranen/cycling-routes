@@ -1,21 +1,24 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import React from "react";
 import Map from "./components/map/Map";
-import Sidebar from "./components/routes/Sidebar";
+import Header from "./components/navigation/Header";
+import Sidebar from "./components/navigation/Sidebar";
+import Route from "./components/routes/Route";
 
 function App() {
     return (
         <div className="h-dvh w-dvw">
-            <div className="h-16 p-4 bg-gray-900 navbar text-base-100">
-                <div className="text-3xl">Cycling routes</div>
-            </div>
-            <div className="flex flex-row w-full h-full bg-base-100">
-                <div className="w-96">
+            <Header />
+            <div className="absolute bottom-0 left-0 right-0 flex flex-row top-16 bg-base-100">
+                <div className="w-96 shrink-0">
                     <Sidebar />
                 </div>
                 <div className="relative flex flex-row w-full h-full">
-                    <div className="absolute top-0 left-0 right-0 bottom-16">
+                    <div className="absolute top-0 bottom-0 left-0 right-0">
                         <Map />
+                        <div className="absolute flex flex-row right-4 top-4">
+                            <Route />
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1,7 +1,7 @@
 import * as RadixSlider from "@radix-ui/react-slider";
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "../../store";
+import { RootState } from "../../app/store";
 import { setMaxDistance, setMinDistance } from "../routes/routeSlice";
 
 export default function DistanceSlider({ onChange }: { onChange?: (value: number[]) => void }) {

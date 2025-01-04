@@ -1,7 +1,7 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import { routesApi } from "./components/app/apiSlice";
-import mapSlice from "./components/map/mapSlice";
-import routeSlice from "./components/routes/routeSlice";
+import { routesApi } from "../components/app/apiSlice";
+import mapSlice from "../components/map/mapSlice";
+import routeSlice from "../components/routes/routeSlice";
 
 const combinedReducer = combineReducers({
     map: mapSlice,
