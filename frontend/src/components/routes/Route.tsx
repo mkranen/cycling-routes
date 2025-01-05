@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { RouteType } from "../../types/route";
+import { useKeyDown } from "../../utils/useKeyDown";
 import { setSelectedRoute } from "./routeSlice";
 
 export default function Route() {
@@ -10,14 +11,20 @@ export default function Route() {
     const url = useMemo(() => {
         if (!selectedRoute) return "";
 
-        let url = "";
         if (selectedRoute.komoot) {
-            url = `https://www.komoot.com/tour/${selectedRoute.komoot.id}`;
+            return `https://www.komoot.com/tour/${selectedRoute.komoot.id}`;
         } else if (selectedRoute.strava) {
-            url = `https://www.strava.com/routes/${selectedRoute.strava.id}`;
+            return `https://www.strava.com/routes/${selectedRoute.strava.id}`;
         }
-        return url;
+
+        return "";
     }, [selectedRoute]);
+
+    useKeyDown(() => {
+        if (selectedRoute) {
+            dispatch(setSelectedRoute(null));
+        }
+    }, ["Escape"]);
 
     if (!selectedRoute) {
         return null;
