@@ -9,7 +9,7 @@ export default function Sidebar() {
     const dispatch = useDispatch();
 
     return (
-        <div className="w-full h-full p-4 bg-gradient-to-r from-gray-700 to-gray-600 text-base-100">
+        <div className="w-full h-full p-4 bg-gradient-315 from-gray-800 to-gray-600 text-base-100">
             <div className="flex flex-col gap-4">
                 <div className="form-control">
                     <label className="px-0 my-2">

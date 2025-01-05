@@ -1,9 +1,13 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import React from "react";
+import resolveConfig from "tailwindcss/resolveConfig";
+import tailwindConfig from "../tailwind.config";
 import Map from "./components/map/Map";
 import Header from "./components/navigation/Header";
 import Sidebar from "./components/navigation/Sidebar";
 import Route from "./components/routes/Route";
+
+export const fullConfig = resolveConfig(tailwindConfig);
 
 function App() {
     return (
@@ -16,7 +20,7 @@ function App() {
                 <div className="relative flex flex-row w-full h-full">
                     <div className="absolute top-0 bottom-0 left-0 right-0">
                         <Map />
-                        <div className="absolute flex flex-row right-4 top-4">
+                        <div className="absolute flex flex-row left-4 top-4">
                             <Route />
                         </div>
                     </div>

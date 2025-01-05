@@ -24,7 +24,7 @@ export default function Route() {
     }
 
     return (
-        <div className="shadow-xl card card-compact bg-base-100 w-96">
+        <div className="shadow-xl card card-compact bg-gradient-315 from-gray-100 to-base-100 text-content-100 w-96">
             <div className="absolute justify-end right-2 top-2">
                 <button className="btn btn-square btn-sm btn-ghost" onClick={() => dispatch(setSelectedRoute(null))}>
                     <svg
@@ -38,19 +38,21 @@ export default function Route() {
                     </svg>
                 </button>
             </div>
+
             <div className="card-body">
                 <div className="flex flex-col gap-0">
                     <h2 className="pb-0 m-0 card-title">{selectedRoute.name}</h2>
 
                     {selectedRoute.distance && (
-                        <p className="text-lg text-gray-500">{(selectedRoute.distance / 1000).toFixed(2)} km</p>
+                        <p className="text-lg">{(selectedRoute.distance / 1000).toFixed(2)} km</p>
                     )}
                 </div>
-                <div className="flex flex-row items-end justify-between card-actions">
+
+                <div className="flex flex-row items-end justify-between pt-2 card-actions">
                     <button className="btn btn-primary" onClick={() => window.open(url, "_blank")}>
                         Show on {selectedRoute.source}
                     </button>
-                    <div className={`text-sm ${selectedRoute.source === "Komoot" ? "text-komoot" : "text-strava"}`}>
+                    <div className={`badge ${selectedRoute.source === "Komoot" ? "badge-komoot" : "badge-strava"}`}>
                         {selectedRoute.source}
                     </div>
                 </div>

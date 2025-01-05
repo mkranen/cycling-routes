@@ -1,6 +1,7 @@
 import {
     GeolocateControl,
     Layer,
+    LineLayer,
     MapLayerMouseEvent,
     Map as MaplibreMap,
     MapRef,
@@ -15,7 +16,8 @@ import { RouteType } from "../../types/route.ts";
 import { useGetRoutesQuery } from "../app/apiSlice.ts";
 import { setSelectedRoute } from "../routes/routeSlice.ts";
 import { setBounds, setLatitude, setLongitude } from "./mapSlice";
-import { highlightedRoutesLayer, routesLayer } from "./mapStyle.ts";
+// import { highlightedRoutesLayer, routesLayer } from "./mapStyle.ts";
+import { fullConfig } from "../../App";
 
 function Map() {
     const mapRef = useRef<MapRef>(null);
@@ -33,6 +35,40 @@ function Map() {
     const mapBounds = useSelector((state: RootState) => state.map.bounds);
     const { data: routesData } = useGetRoutesQuery({ limit, sport, minDistance, maxDistance, mapBounds });
     const dispatch = useDispatch();
+
+    const routesLayer = useMemo((): LineLayer => {
+        return {
+            id: "routes",
+            source: "",
+            type: "line",
+            layout: {
+                "line-join": "round",
+                "line-cap": "round",
+            },
+            paint: {
+                "line-color": fullConfig.theme.colors.cyan["700"],
+                "line-opacity": 0.5,
+                "line-width": 5,
+            },
+        };
+    }, [fullConfig]);
+
+    const highlightedRoutesLayer = useMemo((): LineLayer => {
+        return {
+            id: "highlighted-routes",
+            source: "",
+            type: "line",
+            layout: {
+                "line-join": "round",
+                "line-cap": "round",
+            },
+            paint: {
+                "line-color": fullConfig.theme.colors.cyan["500"],
+                "line-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0],
+                "line-width": 8,
+            },
+        };
+    }, [fullConfig]);
 
     const routesFeaturesData = useMemo((): RouteCollection | null => {
         if (!routesData) return null;
