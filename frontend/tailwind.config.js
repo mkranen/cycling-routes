@@ -10,6 +10,7 @@ export default {
                 light: {
                     ...daisyuiColors.light,
                     primary: "#06b6d4",
+                    secondary: "rgb(30 41 59)",
 
                     ".btn-primary": {
                         color: "#fff",

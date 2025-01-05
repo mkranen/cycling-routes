@@ -56,7 +56,7 @@ export default function Route() {
                 </div>
 
                 <div className="flex flex-row items-end justify-between pt-2 card-actions">
-                    <button className="btn btn-primary" onClick={() => window.open(url, "_blank")}>
+                    <button className="btn btn-secondary" onClick={() => window.open(url, "_blank")}>
                         Show on {selectedRoute.source}
                     </button>
                     <div className={`badge ${selectedRoute.source === "Komoot" ? "badge-komoot" : "badge-strava"}`}>
