@@ -7,7 +7,7 @@ import {
     Popup,
     Source,
 } from "@vis.gl/react-maplibre";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../app/store.ts";
 import type { RouteCollection, RoutePopupData, ViewState } from "../../types/map";
@@ -79,7 +79,6 @@ function Map() {
         }
 
         mapRef.current.setFeatureState({ source: "routes", id: hoveredRouteId }, { hover: false });
-        mapRef.current.setFeatureState({ source: "routes", id: route.id }, { hover: true });
         setHoveredRouteId(route.id);
     }
 
@@ -96,11 +95,21 @@ function Map() {
     }
 
     function updateBounds() {
-        if (!mapRef.current) return;
+        if (!mapRef.current) {
+            return;
+        }
 
         const bounds = mapRef.current.getBounds().toArray();
         dispatch(setBounds(bounds));
     }
+
+    useEffect(() => {
+        if (!mapRef.current) {
+            return;
+        }
+
+        mapRef.current.setFeatureState({ source: "routes", id: hoveredRouteId }, { hover: true });
+    }, [hoveredRouteId]);
 
     return (
         <MaplibreMap
