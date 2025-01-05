@@ -10,14 +10,13 @@ import {
 } from "@vis.gl/react-maplibre";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { fullConfig } from "../../App";
 import { RootState } from "../../app/store.ts";
 import type { RouteCollection, RoutePopupData, ViewState } from "../../types/map";
 import { RouteType } from "../../types/route.ts";
 import { useGetRoutesQuery } from "../app/apiSlice.ts";
 import { setSelectedRoute } from "../routes/routeSlice.ts";
 import { setBounds, setLatitude, setLongitude } from "./mapSlice";
-// import { highlightedRoutesLayer, routesLayer } from "./mapStyle.ts";
-import { fullConfig } from "../../App";
 
 function Map() {
     const mapRef = useRef<MapRef>(null);

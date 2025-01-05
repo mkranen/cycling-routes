@@ -33,7 +33,7 @@ export default function DistanceSlider({ onChange }: { onChange?: (value: number
                 }}
             >
                 <RadixSlider.Track className="relative w-full h-[3px] rounded-full bg-gray-200">
-                    <RadixSlider.Range className="absolute h-full bg-blue-500 rounded-full" />
+                    <RadixSlider.Range className="absolute h-full rounded-full bg-cyan-600" />
                 </RadixSlider.Track>
                 <RadixSlider.Thumb
                     className="block w-5 h-5 rounded-full shadow-md bg-base-100 hover:bg-gray-50 focus:outline-none"
