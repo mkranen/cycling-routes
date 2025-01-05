@@ -63,7 +63,7 @@ function Map() {
                 "line-cap": "round",
             },
             paint: {
-                "line-color": fullConfig.theme.colors.cyan["500"],
+                "line-color": fullConfig.theme.colors.cyan["800"],
                 "line-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0],
                 "line-width": 8,
             },
@@ -207,8 +207,8 @@ function Map() {
                     latitude={popupData?.event.lngLat.lat}
                     closeButton={false}
                     closeOnClick={false}
-                    offset={[0, -16]}
-                    className="text-base-100 [&_.maplibregl-popup-content]:bg-blue-500 [&_.maplibregl-popup-content]:py-2 [&_.maplibregl-popup-content]:px-4 [&_.maplibregl-popup-tip]:border-y-blue-500"
+                    offset={[0, -10]}
+                    className="text-base-100 [&_.maplibregl-popup-content]:bg-slate-800 [&_.maplibregl-popup-content]:py-2 [&_.maplibregl-popup-content]:px-4 [&_.maplibregl-popup-content]:rounded [&_.maplibregl-popup-tip]:border-y-slate-800"
                 >
                     <div className="text-base">{popupData?.route?.name}</div>
                 </Popup>
