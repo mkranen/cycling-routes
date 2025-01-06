@@ -23,6 +23,8 @@ function Map() {
     const latitude = useSelector((state: RootState) => state.map.latitude);
     const longitude = useSelector((state: RootState) => state.map.longitude);
     const zoom = useSelector((state: RootState) => state.map.zoom);
+    const selectedRoute = useSelector((state: RootState) => state.route.selectedRoute);
+    const previousSelectedRoute = useSelector((state: RootState) => state.route.previousSelectedRoute);
     const [hoveredRouteId, setHoveredRouteId] = useState<number | null>(null);
     const [popupVisible, setPopupVisible] = useState(false);
     const [popupData, setPopupData] = useState<RoutePopupData | null>(null);
@@ -54,7 +56,7 @@ function Map() {
 
     const highlightedRoutesLayer = useMemo((): LineLayer => {
         return {
-            id: "highlighted-routes",
+            id: "highlighted-route",
             source: "",
             type: "line",
             layout: {
@@ -65,6 +67,40 @@ function Map() {
                 "line-color": fullConfig.theme.colors.cyan["800"],
                 "line-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0],
                 "line-width": 8,
+            },
+        };
+    }, [fullConfig]);
+
+    const selectedRoutesLayer = useMemo((): LineLayer => {
+        return {
+            id: "selected-route",
+            source: "",
+            type: "line",
+            layout: {
+                "line-join": "round",
+                "line-cap": "round",
+            },
+            paint: {
+                "line-color": fullConfig.theme.colors.cyan["900"],
+                "line-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 1, 0],
+                "line-width": 8,
+            },
+        };
+    }, [fullConfig]);
+
+    const selectedRoutesBackgroundLayer = useMemo((): LineLayer => {
+        return {
+            id: "selected-route-background",
+            source: "",
+            type: "line",
+            layout: {
+                "line-join": "round",
+                "line-cap": "round",
+            },
+            paint: {
+                "line-color": fullConfig.theme.colors.white,
+                "line-opacity": ["case", ["boolean", ["feature-state", "selected"], false], 1, 0],
+                "line-width": 14,
             },
         };
     }, [fullConfig]);
@@ -97,6 +133,16 @@ function Map() {
         if (!routeId) return null;
 
         return routesData?.find((route: RouteType) => route.id === routeId);
+    }
+
+    function selectRoute(event: MapLayerMouseEvent) {
+        const route = getFirstRoute(event);
+        if (!route) {
+            dispatch(setSelectedRoute(null));
+            return;
+        }
+
+        dispatch(setSelectedRoute(route));
     }
 
     function highlightRoute(event: MapLayerMouseEvent) {
@@ -146,6 +192,22 @@ function Map() {
         mapRef.current.setFeatureState({ source: "routes", id: hoveredRouteId }, { hover: true });
     }, [hoveredRouteId]);
 
+    useEffect(() => {
+        if (!mapRef.current || !selectedRoute) {
+            return;
+        }
+
+        mapRef.current.setFeatureState({ source: "routes", id: selectedRoute.id }, { selected: true });
+    }, [selectedRoute]);
+
+    useEffect(() => {
+        if (!mapRef.current || !previousSelectedRoute) {
+            return;
+        }
+
+        mapRef.current.setFeatureState({ source: "routes", id: previousSelectedRoute.id }, { selected: false });
+    }, [previousSelectedRoute]);
+
     return (
         <MaplibreMap
             {...viewState}
@@ -160,12 +222,7 @@ function Map() {
             onMove={(evt) => setViewState(evt.viewState)}
             onMoveEnd={() => updateBounds()}
             onClick={(event: MapLayerMouseEvent) => {
-                const route = getFirstRoute(event);
-                if (route) {
-                    dispatch(setSelectedRoute(route));
-                } else {
-                    dispatch(setSelectedRoute(null));
-                }
+                selectRoute(event);
             }}
             onMouseEnter={(event: MapLayerMouseEvent) => {
                 highlightRoute(event);
@@ -195,8 +252,10 @@ function Map() {
 
             {routesFeaturesData && (
                 <Source id="routes" type="geojson" data={routesFeaturesData}>
-                    <Layer {...highlightedRoutesLayer} source="routes-highlight" />
-                    <Layer beforeId="highlighted-routes" {...routesLayer} source="routes" />
+                    <Layer {...selectedRoutesLayer} source="routes" />
+                    <Layer beforeId="selected-route" {...selectedRoutesBackgroundLayer} source="routes" />
+                    <Layer beforeId="selected-route-background" {...highlightedRoutesLayer} source="routes" />
+                    <Layer beforeId="highlighted-route" {...routesLayer} source="routes" />
                 </Source>
             )}
 

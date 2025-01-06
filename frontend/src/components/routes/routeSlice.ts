@@ -14,6 +14,7 @@ export type Sport = "race_bike" | "mountain_bike" | "gravel_bike" | "touring_bik
 
 interface RouteState {
     selectedRoute: RouteType | null;
+    previousSelectedRoute: RouteType | null;
     limit: number;
     sport: Sport;
     minDistance: number | null;
@@ -22,6 +23,7 @@ interface RouteState {
 
 const initialState: RouteState = {
     selectedRoute: null,
+    previousSelectedRoute: null,
     limit: 200,
     sport: null,
     minDistance: 40,
@@ -34,6 +36,9 @@ export const routeSlice = createSlice({
     reducers: {
         setSelectedRoute: (state, action: PayloadAction<RouteType | null>) => {
             state.selectedRoute = action.payload;
+        },
+        setPreviousSelectedRoute: (state, action: PayloadAction<RouteType | null>) => {
+            state.previousSelectedRoute = action.payload;
         },
         setLimit: (state, action: PayloadAction<number>) => {
             state.limit = action.payload;
@@ -50,5 +55,6 @@ export const routeSlice = createSlice({
     },
 });
 
-export const { setSelectedRoute, setLimit, setSport, setMinDistance, setMaxDistance } = routeSlice.actions;
+export const { setSelectedRoute, setPreviousSelectedRoute, setLimit, setSport, setMinDistance, setMaxDistance } =
+    routeSlice.actions;
 export default routeSlice.reducer;
