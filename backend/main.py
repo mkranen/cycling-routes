@@ -1,16 +1,14 @@
 import json
-from typing import List
+import os
 
 from database import engine
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, WebSocketDisconnect
+from fastapi import (APIRouter, Depends, FastAPI, HTTPException,
+                     WebSocketDisconnect)
 from fastapi.middleware.cors import CORSMiddleware
-from models.models import (
-    KomootRoute,
-    KomootRoutePublic,
-    KomootRoutePublicWithRoutePoints,
-    Route,
-    RoutePublic,
-)
+from komoot import API, TourStatus, TourType
+from models.models import (KomootRoute, KomootRoutePublic,
+                           KomootRoutePublicWithRoutePoints, Route,
+                           RoutePublic)
 from sqlmodel import Session
 from starlette.websockets import WebSocket
 from websockets.exceptions import ConnectionClosed
@@ -172,6 +170,43 @@ def update_komoot_routes(
     for komoot_route in komoot_routes:
         komoot_route.update_route(session)
     return "done"
+
+
+@app.get("/import-komoot-routes")
+def import_komoot_routes(
+    *,
+    session: Session = Depends(get_session),
+):
+    email_id = os.getenv("KOMOOT_EMAIL")
+    password = os.getenv("KOMOOT_PASSWORD")
+    process_personal = False
+    process_gravelritten = False
+    process_gijs_bruinsma = True
+
+    a = API()
+    a.login(email_id, password)
+
+    # Personal tours
+    if process_personal:
+        a.process_user_tours(
+            user_id=a.user_details["user_id"],
+            prefix="personal",
+            tour_status=None,
+        )
+
+    # Gravelritten
+    if process_gravelritten:
+        a.process_user_tours(
+            user_id="751970492203",
+            prefix="gravelritten"
+        )
+
+    # Gijs Bruinsma
+    if process_gijs_bruinsma:
+        a.process_user_tours(
+            user_id="753944379383", 
+            prefix="gijs_bruinsma"
+        )
 
 
 @app.get("/test")
