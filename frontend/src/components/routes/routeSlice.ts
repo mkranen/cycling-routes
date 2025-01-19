@@ -1,33 +1,41 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RouteType } from "../../types/route";
 
-export const sports = {
-    race_bike: "Race bike",
-    mountain_bike: "Mountain bike",
-    gravel_bike: "Gravel bike",
-    touring_bike: "Touring bike",
-    hike: "Hike",
-    run: "Run",
-};
+export const sports = [
+    { value: "race_bike", label: "Race bike" },
+    { value: "mountain_bike", label: "Mountain bike" },
+    { value: "gravel_bike", label: "Gravel bike" },
+    { value: "touring_bike", label: "Touring bike" },
+    { value: "hike", label: "Hike" },
+    { value: "run", label: "Run" },
+];
 
-export type Sport = "race_bike" | "mountain_bike" | "gravel_bike" | "touring_bike" | "hike" | "run" | null;
+export const collections = [
+    { value: "personal", label: "Personal" },
+    { value: "gravelritten", label: "Gravelritten" },
+    { value: "gijs_bruinsma", label: "Gijs Bruinsma" },
+];
+
+export type Sport = { value: string; label: string } | null;
 
 interface RouteState {
     selectedRoute: RouteType | null;
     previousSelectedRoute: RouteType | null;
     limit: number;
-    sport: Sport;
+    sport: Sport | null;
     minDistance: number | null;
     maxDistance: number | null;
+    selectedCollections?: { value: string; label: string }[];
 }
 
 const initialState: RouteState = {
     selectedRoute: null,
     previousSelectedRoute: null,
     limit: 200,
-    sport: null,
+    sport: sports[0],
     minDistance: 40,
     maxDistance: 60,
+    selectedCollections: [collections[0]],
 };
 
 export const routeSlice = createSlice({
@@ -52,9 +60,19 @@ export const routeSlice = createSlice({
         setMaxDistance: (state, action: PayloadAction<number | null>) => {
             state.maxDistance = action.payload;
         },
+        setSelectedCollections: (state, action: PayloadAction<{ value: string; label: string }[]>) => {
+            state.selectedCollections = action.payload;
+        },
     },
 });
 
-export const { setSelectedRoute, setPreviousSelectedRoute, setLimit, setSport, setMinDistance, setMaxDistance } =
-    routeSlice.actions;
+export const {
+    setSelectedRoute,
+    setPreviousSelectedRoute,
+    setLimit,
+    setSport,
+    setMinDistance,
+    setMaxDistance,
+    setSelectedCollections,
+} = routeSlice.actions;
 export default routeSlice.reducer;

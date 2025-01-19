@@ -2,13 +2,16 @@ import json
 import os
 
 from database import engine
-from fastapi import (APIRouter, Depends, FastAPI, HTTPException,
-                     WebSocketDisconnect)
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from komoot import API, TourStatus, TourType
-from models.models import (KomootRoute, KomootRoutePublic,
-                           KomootRoutePublicWithRoutePoints, Route,
-                           RoutePublic)
+from models.models import (
+    KomootRoute,
+    KomootRoutePublic,
+    KomootRoutePublicWithRoutePoints,
+    Route,
+    RoutePublic,
+)
 from sqlmodel import Session
 from starlette.websockets import WebSocket
 from websockets.exceptions import ConnectionClosed
@@ -89,6 +92,7 @@ def get_routes(
     *,
     session: Session = Depends(get_session),
     sport: str = None,
+    collections: str = None,
     min_distance: float = None,
     max_distance: float = None,
     min_bounds: str = None,
@@ -109,9 +113,12 @@ def get_routes(
         else None
     )
 
+    collections_list = collections.split(",") if collections else None
+
     routes = Route.get_all(
         session,
         sport,
+        collections_list,
         min_distance,
         max_distance,
         min_bounds_list,
@@ -161,15 +168,15 @@ def update_bounding_boxes(
     return "done"
 
 
-@app.get("/update-komoot-routes")
-def update_komoot_routes(
-    *,
-    session: Session = Depends(get_session),
-):
-    komoot_routes = KomootRoute.get_all(session, limit=None)
-    for komoot_route in komoot_routes:
-        komoot_route.update_route(session)
-    return "done"
+# @app.get("/update-komoot-routes")
+# def update_komoot_routes(
+#     *,
+#     session: Session = Depends(get_session),
+# ):
+#     komoot_routes = KomootRoute.get_all(session, limit=None)
+#     for komoot_route in komoot_routes:
+#         komoot_route.update_route(session)
+#     return "done"
 
 
 @app.get("/import-komoot-routes")
@@ -196,17 +203,11 @@ def import_komoot_routes(
 
     # Gravelritten
     if process_gravelritten:
-        a.process_user_tours(
-            user_id="751970492203",
-            prefix="gravelritten"
-        )
+        a.process_user_tours(user_id="751970492203", prefix="gravelritten")
 
     # Gijs Bruinsma
     if process_gijs_bruinsma:
-        a.process_user_tours(
-            user_id="753944379383", 
-            prefix="gijs_bruinsma"
-        )
+        a.process_user_tours(user_id="753944379383", prefix="gijs_bruinsma")
 
 
 @app.get("/test")

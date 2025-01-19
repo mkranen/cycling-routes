@@ -6,8 +6,7 @@ from typing import List, Optional
 from humps import camelize
 from pydantic import computed_field
 from sqlalchemy.dialects.postgresql import ENUM
-from sqlmodel import (JSON, Column, Field, Relationship, Session, SQLModel,
-                      select)
+from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
 from utils.route import LAT, LNG, get_min_max, get_track_points
 
 komoot_sport_to_slug = {
@@ -20,6 +19,7 @@ komoot_sport_to_slug = {
 }
 
 gpx_file_path = "./downloads"
+
 
 def to_camel(string):
     return camelize(string)
@@ -58,6 +58,7 @@ class SportPublic(SQLModel):
     name: str
     slug: Optional[str] = None
 
+
 class Collection(SQLModel, table=True):
     __tablename__ = "collections"
 
@@ -85,10 +86,12 @@ class CollectionRoute(SQLModel, table=True):
     collection: Collection = Relationship(back_populates="routes")
     route: "Route" = Relationship(back_populates="collections")
 
+
 class CollectionRoutePublic(SQLModel):
     id: int
     collection_id: int
     route_id: int
+
 
 # Komoot
 
@@ -284,6 +287,7 @@ class KomootTourInformation(SQLModel, table=True):
 
 # Route
 
+
 class Route(SQLModel, table=True):
     __tablename__ = "routes"
 
@@ -317,6 +321,7 @@ class Route(SQLModel, table=True):
     def get_all(
         session: Session,
         sport: Optional[Sport] = None,
+        collections: Optional[List[str]] = None,
         minDistance: Optional[float] = None,
         maxDistance: Optional[float] = None,
         minBounds: Optional[List[float]] = None,
@@ -342,9 +347,17 @@ class Route(SQLModel, table=True):
         if sport is not None:
             query = query.where(Route.sport == sport)
 
+        if collections is not None:
+            query = (
+                query.join(CollectionRoute)
+                .join(Collection)
+                .filter(Collection.slug.in_(collections))
+            )
+
         if limit is not None:
             query = query.limit(limit)
 
+        print(query)
         return session.exec(query).all()
 
     def add_gpx_file(self, session: Session):
@@ -362,7 +375,9 @@ class Route(SQLModel, table=True):
 
         collection_slug = self.collections[0].collection.slug
         activity_type = self.sport
-        file_path = f"{gpx_file_path}/{collection_slug}/{activity_type}/{self.gpx_file_path}"
+        file_path = (
+            f"{gpx_file_path}/{collection_slug}/{activity_type}/{self.gpx_file_path}"
+        )
 
         file = Path(file_path)
         if not file.exists():

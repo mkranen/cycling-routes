@@ -31,10 +31,18 @@ function Map() {
     const [viewState, setViewState] = useState<ViewState>({ longitude, latitude, zoom });
     const limit = useSelector((state: RootState) => state.route.limit);
     const sport = useSelector((state: RootState) => state.route.sport);
+    const selectedCollections = useSelector((state: RootState) => state.route.selectedCollections);
     const minDistance = useSelector((state: RootState) => state.route.minDistance);
     const maxDistance = useSelector((state: RootState) => state.route.maxDistance);
     const mapBounds = useSelector((state: RootState) => state.map.bounds);
-    const { data: routesData } = useGetRoutesQuery({ limit, sport, minDistance, maxDistance, mapBounds });
+    const { data: routesData } = useGetRoutesQuery({
+        limit,
+        sport,
+        collections: selectedCollections?.map((collection) => collection.value),
+        minDistance,
+        maxDistance,
+        mapBounds,
+    });
     const dispatch = useDispatch();
 
     const routesLayer = useMemo((): LineLayer => {
