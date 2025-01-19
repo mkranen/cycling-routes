@@ -6,7 +6,8 @@ from typing import List, Optional
 from humps import camelize
 from pydantic import computed_field
 from sqlalchemy.dialects.postgresql import ENUM
-from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
+from sqlmodel import (JSON, Column, Field, Relationship, Session, SQLModel,
+                      select)
 from utils.route import LAT, LNG, get_min_max, get_track_points
 
 komoot_sport_to_slug = {
@@ -18,6 +19,7 @@ komoot_sport_to_slug = {
     "run": "run",
 }
 
+gpx_file_path = "./downloads"
 
 def to_camel(string):
     return camelize(string)
@@ -56,6 +58,37 @@ class SportPublic(SQLModel):
     name: str
     slug: Optional[str] = None
 
+class Collection(SQLModel, table=True):
+    __tablename__ = "collections"
+
+    id: int = Field(default=None, primary_key=True)
+    name: str
+    slug: Optional[str] = None
+
+    routes: list["CollectionRoute"] = Relationship(back_populates="collection")
+
+    class Config:
+        populate_by_name = True
+        alias_generator = to_camel
+
+    def __repr__(self):
+        return f"Collection(id={self.id}, name={self.name}, slug={self.slug})"
+
+
+class CollectionRoute(SQLModel, table=True):
+    __tablename__ = "collection_routes"
+
+    id: int = Field(default=None, primary_key=True)
+    collection_id: int = Field(default=None, foreign_key="collections.id")
+    route_id: int = Field(default=None, foreign_key="routes.id")
+
+    collection: Collection = Relationship(back_populates="routes")
+    route: "Route" = Relationship(back_populates="collections")
+
+class CollectionRoutePublic(SQLModel):
+    id: int
+    collection_id: int
+    route_id: int
 
 # Komoot
 
@@ -114,25 +147,25 @@ class KomootRoute(SQLModel, table=True):
 
         return session.exec(select(KomootRoute).limit(limit)).all()
 
-    def update_route(self, session: Session):
-        route = Route.get_by_komoot_id(session, self.id)
-        if route is None:
-            route = Route()
+    # def update_route(self, session: Session):
+    #     route = Route.get_by_komoot_id(session, self.id)
+    #     if route is None:
+    #         route = Route()
 
-        if not route.name:
-            route.name = self.name
-        if not route.komoot_id:
-            route.komoot_id = self.id
-        if not route.distance:
-            route.distance = self.distance
-        if not route.gpx_file_path:
-            route.gpx_file_path = self.gpx_file_path
+    #     if not route.name:
+    #         route.name = self.name
+    #     if not route.komoot_id:
+    #         route.komoot_id = self.id
+    #     if not route.distance:
+    #         route.distance = self.distance
+    #     if not route.gpx_file_path:
+    #         route.gpx_file_path = self.gpx_file_path
 
-        if not route.sport and self.sport in komoot_sport_to_slug:
-            route.sport = Sport(komoot_sport_to_slug[self.sport])
+    #     if not route.sport and self.sport in komoot_sport_to_slug:
+    #         route.sport = Sport(komoot_sport_to_slug[self.sport])
 
-        session.add(route)
-        session.commit()
+    #     session.add(route)
+    #     session.commit()
 
 
 class KomootRoutePublic(SQLModel):
@@ -251,7 +284,6 @@ class KomootTourInformation(SQLModel, table=True):
 
 # Route
 
-
 class Route(SQLModel, table=True):
     __tablename__ = "routes"
 
@@ -271,6 +303,7 @@ class Route(SQLModel, table=True):
 
     komoot: KomootRoute | None = Relationship(back_populates="routes")
     # sport: Sport | None = Relationship(back_populates="routes")
+    collections: list["CollectionRoute"] = Relationship(back_populates="route")
 
     @staticmethod
     def get_by_id(session: Session, id: int):
@@ -327,8 +360,9 @@ class Route(SQLModel, table=True):
         if not self.gpx_file_path or not self.sport:
             return
 
+        collection_slug = self.collections[0].collection.slug
         activity_type = self.sport
-        file_path = f"./gpx_files/{activity_type}/{self.gpx_file_path}"
+        file_path = f"{gpx_file_path}/{collection_slug}/{activity_type}/{self.gpx_file_path}"
 
         file = Path(file_path)
         if not file.exists():
@@ -359,6 +393,7 @@ class RoutePublic(SQLModel):
     name: str
     sport: Optional[Sport] = None
     distance: Optional[float] = None
+    collections: Optional[List[CollectionRoutePublic]] = None
     route_points: Optional[List[List[float]]]
 
     @computed_field(description="source")

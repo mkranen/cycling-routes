@@ -13,6 +13,7 @@ from enum import IntFlag, auto
 from pathlib import Path
 
 import requests
+from models.models import komoot_sport_to_slug
 
 _LOGIN_URL = "https://api.komoot.de/v006/account/email/%s/"
 _TOURS_URL = "https://www.komoot.com/api/v007/users/%s/tours/"
@@ -403,8 +404,9 @@ class API:
         """
 
         tour_id = tour["id"]
-        sport = tour["sport"]
+        komoot_sport = tour["sport"]
 
+        sport = komoot_sport_to_slug[komoot_sport]
         file_dir = download_dir + "/" + sport
         Path(file_dir).mkdir(parents=True, exist_ok=True)
 
