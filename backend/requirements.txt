@@ -12,3 +12,4 @@ uvicorn[standard]
 pyhumps
 sqlmodel
 python-slugify
+stravalib
