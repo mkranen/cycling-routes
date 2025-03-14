@@ -1,9 +1,13 @@
 import enum
+import json
+import os
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
+from dotenv import load_dotenv
 from humps import camelize
+from komPYoot import API, TourOwner, TourStatus, TourType
 from pydantic import computed_field
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
@@ -150,25 +154,261 @@ class KomootRoute(SQLModel, table=True):
 
         return session.exec(select(KomootRoute).limit(limit)).all()
 
-    # def update_route(self, session: Session):
-    #     route = Route.get_by_komoot_id(session, self.id)
-    #     if route is None:
-    #         route = Route()
+    @staticmethod
+    def import_from_json(
+        session: Session, route_data: Dict, collection_slug: str | None = None
+    ) -> "KomootRoute":
+        try:
+            # Check if route already exists
+            komoot_route = session.exec(
+                select(KomootRoute).where(KomootRoute.id == route_data["id"])
+            ).first()
 
-    #     if not route.name:
-    #         route.name = self.name
-    #     if not route.komoot_id:
-    #         route.komoot_id = self.id
-    #     if not route.distance:
-    #         route.distance = self.distance
-    #     if not route.gpx_file_path:
-    #         route.gpx_file_path = self.gpx_file_path
+            if not komoot_route:
+                komoot_route = KomootRoute(
+                    id=route_data["id"],
+                    type=route_data["type"],
+                    name=route_data["name"],
+                    source=route_data["source"],
+                    routing_version=route_data.get("routing_version", None),
+                    status=route_data["status"],
+                    date=parse_datetime(route_data["date"]),
+                    kcal_active=route_data["kcal_active"],
+                    kcal_resting=route_data["kcal_resting"],
+                    distance=route_data["distance"],
+                    duration=route_data["duration"],
+                    elevation_up=route_data["elevation_up"],
+                    elevation_down=route_data["elevation_down"],
+                    sport=route_data["sport"],
+                    query=route_data["query"],
+                    constitution=route_data["constitution"],
+                    changed_at=parse_datetime(route_data["changed_at"]),
+                    potential_route_update=route_data["potential_route_update"],
+                )
+                session.add(komoot_route)
 
-    #     if not route.sport and self.sport in komoot_sport_to_slug:
-    #         route.sport = Sport(komoot_sport_to_slug[self.sport])
+            # Add start point
+            if not komoot_route.start_point:
+                start_point = KomootStartPoint(
+                    route_id=komoot_route.id,
+                    lat=route_data["start_point"]["lat"],
+                    lng=route_data["start_point"]["lng"],
+                    alt=route_data["start_point"]["alt"],
+                )
+                session.add(start_point)
 
-    #     session.add(route)
-    #     session.commit()
+            # Add difficulty
+            if "difficulty" in route_data and not komoot_route.difficulty:
+                difficulty = KomootDifficulty(
+                    route_id=komoot_route.id,
+                    grade=route_data["difficulty"]["grade"],
+                    explanation_technical=route_data["difficulty"][
+                        "explanation_technical"
+                    ],
+                    explanation_fitness=route_data["difficulty"]["explanation_fitness"],
+                )
+                session.add(difficulty)
+
+            # Add tour information
+            if not komoot_route.tour_information:
+                for tour_info in route_data.get("tour_information", []):
+                    tour = KomootTourInformation(
+                        route_id=komoot_route.id,
+                        type=tour_info["type"],
+                        segments=tour_info["segments"],
+                    )
+                    session.add(tour)
+
+            # Add path points
+            if not komoot_route.path_points:
+                for point in route_data.get("path", []):
+                    path_point = KomootPathPoint(
+                        route_id=komoot_route.id,
+                        lat=point["location"]["lat"],
+                        lng=point["location"]["lng"],
+                        index=point["index"],
+                        end_index=point.get("end_index"),
+                        reference=point.get("reference"),
+                        segment_type=point.get("segment_type"),
+                    )
+                    session.add(path_point)
+
+            # Add segments
+            if not komoot_route.segments:
+                for segment in route_data.get("segments", []):
+                    seg = KomootSegment(
+                        route_id=komoot_route.id,
+                        type=segment["type"],
+                        from_index=segment["from"],
+                        to_index=segment["to"],
+                    )
+                    session.add(seg)
+
+            # Add summaries
+            if not komoot_route.surface_summary:
+                for surface in route_data.get("summary", {}).get("surfaces", []):
+                    surface_summary = KomootSurfaceSummary(
+                        route_id=komoot_route.id,
+                        type=surface["type"],
+                        amount=surface["amount"],
+                    )
+                    session.add(surface_summary)
+
+            if not komoot_route.way_type_summary:
+                for way_type in route_data.get("summary", {}).get("way_types", []):
+                    way_type_summary = KomootWayTypeSummary(
+                        route_id=komoot_route.id,
+                        type=way_type["type"],
+                        amount=way_type["amount"],
+                    )
+                    session.add(way_type_summary)
+
+            # Create or update Route
+            route = (
+                session.exec(
+                    select(Route).where(Route.komoot_id == komoot_route.id)
+                ).first()
+                or Route()
+            )
+
+            route.name = route.name or komoot_route.name
+            route.komoot_id = route.komoot_id or komoot_route.id
+            route.distance = route.distance or komoot_route.distance
+            route.gpx_file_path = route.gpx_file_path or komoot_route.gpx_file_path
+
+            if not route.sport and komoot_route.sport in komoot_sport_to_slug:
+                route.sport = Sport(komoot_sport_to_slug[komoot_route.sport])
+
+            session.add(route)
+
+            # Add collection relationship
+            if collection_slug:
+                collection = session.exec(
+                    select(Collection).where(Collection.slug == collection_slug)
+                ).first()
+                if collection:
+                    existing_route = session.exec(
+                        select(CollectionRoute).where(
+                            CollectionRoute.collection_id == collection.id,
+                            CollectionRoute.route_id == route.id,
+                        )
+                    ).first()
+
+                    if not existing_route:
+                        collection_route = CollectionRoute(
+                            route_id=route.id,
+                            collection_id=collection.id,
+                        )
+                        session.add(collection_route)
+
+            session.commit()
+            return komoot_route
+
+        except Exception as e:
+            session.rollback()
+            print(
+                f"Error importing route {route_data.get('name', 'Unknown')}: {str(e)}"
+            )
+            raise
+
+    @classmethod
+    def import_from_file(
+        cls, session: Session, file_path: str, collection_slug: str
+    ) -> List["KomootRoute"]:
+        with open(file_path, "r") as f:
+            routes_data = json.load(f)
+
+        imported_routes = []
+        for route_data in routes_data:
+            try:
+                route = cls.import_from_json(session, route_data, collection_slug)
+                imported_routes.append(route)
+                print(f"Imported {route.name}")
+            except Exception as e:
+                print(f"Skipping route due to error: {str(e)}")
+                continue
+
+        return imported_routes
+
+    @classmethod
+    def download_from_api(
+        cls, sources: list[str] = ["personal", "gravelritten", "gijs_bruinsma"]
+    ) -> None:
+        """Download routes from Komoot API and save to JSON files."""
+        load_dotenv()
+
+        email_id = os.getenv("KOMOOT_EMAIL")
+        password = os.getenv("KOMOOT_PASSWORD")
+        download_dir = "./downloads"
+
+        api = API()
+        api.login(email_id, password)
+
+        source_configs = {
+            "personal": {
+                "user_id": api.user_details["user_id"],
+                "tour_type": TourType.PLANNED,
+                "tour_owner": TourOwner.SELF,
+                "tour_status": None,
+            },
+            "gravelritten": {
+                "user_id": "751970492203",
+                "tour_type": TourType.PLANNED,
+                "tour_status": TourStatus.PUBLIC,
+            },
+            "gijs_bruinsma": {
+                "user_id": "753944379383",
+                "tour_type": TourType.PLANNED,
+                "tour_status": TourStatus.PUBLIC,
+            },
+        }
+
+        for source in sources:
+            if source not in source_configs:
+                print(f"Skipping unknown source: {source}")
+                continue
+
+            config = source_configs[source]
+            source_dir = f"{download_dir}/{source}"
+            Path(source_dir).mkdir(parents=True, exist_ok=True)
+
+            # Get tours list
+            if source == "personal":
+                tours = api.get_user_tours_list(
+                    tour_type=config["tour_type"],
+                    tour_owner=config["tour_owner"],
+                    tour_status=config["tour_status"],
+                )
+            else:
+                tours = api.get_tours_list(
+                    user_id=config["user_id"],
+                    tour_type=config["tour_type"],
+                    tour_status=config["tour_status"],
+                )
+
+            # Save tours JSON
+            json_path = f"{source_dir}/{source}_routes.json"
+            with open(json_path, "w") as f:
+                json.dump(tours, f, indent=4)
+
+            # Download GPX files
+            for index, tour in enumerate(tours):
+                file_name = api.download_tour_gpx_file(tour, download_dir)
+                print(f"Downloaded {source} - {index + 1}/{len(tours)}: {file_name}")
+
+    @classmethod
+    def download_and_import(
+        cls,
+        session: Session,
+        sources: list[str] = ["personal", "gravelritten", "gijs_bruinsma"],
+    ) -> None:
+        """Download routes from API and import them to database."""
+        cls.download_from_api(sources)
+
+        for source in sources:
+            cls.import_from_file(
+                session, f"downloads/{source}/{source}_routes.json", source
+            )
 
 
 class KomootRoutePublic(SQLModel):
