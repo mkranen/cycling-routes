@@ -339,7 +339,6 @@ class KomootRoute(SQLModel, table=True):
 
         email_id = os.getenv("KOMOOT_EMAIL")
         password = os.getenv("KOMOOT_PASSWORD")
-        download_dir = "./downloads"
 
         api = API()
         api.login(email_id, password)
@@ -369,7 +368,7 @@ class KomootRoute(SQLModel, table=True):
                 continue
 
             config = source_configs[source]
-            source_dir = f"{download_dir}/{source}"
+            source_dir = f"{gpx_file_path}/{source}"
             Path(source_dir).mkdir(parents=True, exist_ok=True)
 
             # Get tours list
@@ -393,7 +392,7 @@ class KomootRoute(SQLModel, table=True):
 
             # Download GPX files
             for index, tour in enumerate(tours):
-                file_name = api.download_tour_gpx_file(tour, download_dir)
+                file_name = api.download_tour_gpx_file(tour, gpx_file_path)
                 print(f"Downloaded {source} - {index + 1}/{len(tours)}: {file_name}")
 
     @classmethod
@@ -407,7 +406,7 @@ class KomootRoute(SQLModel, table=True):
 
         for source in sources:
             cls.import_from_file(
-                session, f"downloads/{source}/{source}_routes.json", source
+                session, f"{gpx_file_path}/{source}/{source}_routes.json", source
             )
 
 
