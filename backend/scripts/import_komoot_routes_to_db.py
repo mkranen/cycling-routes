@@ -1,13 +1,29 @@
+import sys
+from pathlib import Path
+
+# Add the parent directory to Python path
+sys.path.append(str(Path(__file__).parent.parent))
+
 import json
 from datetime import datetime
 from typing import Dict, List
 
 from database import engine
-from models.models import (Collection, CollectionRoute, KomootDifficulty,
-                           KomootPathPoint, KomootRoute, KomootSegment,
-                           KomootStartPoint, KomootSurfaceSummary,
-                           KomootTourInformation, KomootWayTypeSummary, Route,
-                           Sport, komoot_sport_to_slug)
+from models.models import (
+    Collection,
+    CollectionRoute,
+    KomootDifficulty,
+    KomootPathPoint,
+    KomootRoute,
+    KomootSegment,
+    KomootStartPoint,
+    KomootSurfaceSummary,
+    KomootTourInformation,
+    KomootWayTypeSummary,
+    Route,
+    Sport,
+    komoot_sport_to_slug,
+)
 from sqlalchemy.orm import sessionmaker
 
 
@@ -15,7 +31,9 @@ def parse_datetime(date_str: str) -> datetime:
     return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
 
 
-def import_route_data(route_data: Dict, collection_slug: str | None = None) -> KomootRoute:
+def import_route_data(
+    route_data: Dict, collection_slug: str | None = None
+) -> KomootRoute:
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
     try:
@@ -68,7 +86,6 @@ def import_route_data(route_data: Dict, collection_slug: str | None = None) -> K
             )
             db.add(start_point)
 
-
         # Check and create difficulty
         if "difficulty" in route_data:
             existing_difficulty = (
@@ -105,7 +122,9 @@ def import_route_data(route_data: Dict, collection_slug: str | None = None) -> K
 
         # Check and create path points
         existing_path_points = (
-            db.query(KomootPathPoint).filter(KomootPathPoint.route_id == komoot_route.id).all()
+            db.query(KomootPathPoint)
+            .filter(KomootPathPoint.route_id == komoot_route.id)
+            .all()
         )
 
         if not existing_path_points:
@@ -123,9 +142,11 @@ def import_route_data(route_data: Dict, collection_slug: str | None = None) -> K
 
         # Check and create segments
         existing_segments = (
-            db.query(KomootSegment).filter(KomootSegment.route_id == komoot_route.id).all()
+            db.query(KomootSegment)
+            .filter(KomootSegment.route_id == komoot_route.id)
+            .all()
         )
-        
+
         if not existing_segments:
             for segment in route_data.get("segments", []):
                 seg = KomootSegment(
@@ -158,7 +179,7 @@ def import_route_data(route_data: Dict, collection_slug: str | None = None) -> K
             .filter(KomootWayTypeSummary.route_id == komoot_route.id)
             .all()
         )
-        
+
         if not existing_way_types:
             for way_type in route_data.get("summary", {}).get("way_types", []):
                 way_type_summary = KomootWayTypeSummary(
@@ -168,13 +189,8 @@ def import_route_data(route_data: Dict, collection_slug: str | None = None) -> K
                 )
                 db.add(way_type_summary)
 
-
         # Update route
-        route = (
-            db.query(Route)
-            .where(Route.komoot_id == komoot_route.id)
-            .first()
-        )
+        route = db.query(Route).where(Route.komoot_id == komoot_route.id).first()
 
         if route is None:
             route = Route()
@@ -196,14 +212,17 @@ def import_route_data(route_data: Dict, collection_slug: str | None = None) -> K
 
         # Check and create collection routes
         query = db.query(CollectionRoute)
-        
+
         if collection_slug:
-            collection = db.query(Collection).filter(Collection.slug == collection_slug).first()
-        
-        
+            collection = (
+                db.query(Collection).filter(Collection.slug == collection_slug).first()
+            )
+
         if collection:
             query = query.filter(CollectionRoute.collection_id == collection.id)
-            existing_collection_routes = query.filter(CollectionRoute.route_id == route.id).all()
+            existing_collection_routes = query.filter(
+                CollectionRoute.route_id == route.id
+            ).all()
 
             if len(existing_collection_routes) == 0:
                 collection_route = CollectionRoute(
@@ -213,7 +232,9 @@ def import_route_data(route_data: Dict, collection_slug: str | None = None) -> K
                 db.add(collection_route)
 
         db.commit()
-        print(f"Successfully imported route: {komoot_route.name} (ID: {komoot_route.id})")
+        print(
+            f"Successfully imported route: {komoot_route.name} (ID: {komoot_route.id})"
+        )
         # return route
 
     except Exception as e:
@@ -241,6 +262,14 @@ def import_routes_from_file(file_path: str, collection_slug: str) -> List[Komoot
 
 
 if __name__ == "__main__":
-    # import_routes_from_file("downloads/personal/personal_routes.json", "personal")
-    # import_routes_from_file("downloads/gravelritten/gravelritten_routes.json", "gravelritten")
-    import_routes_from_file("downloads/gijs_bruinsma/gijs_bruinsma_routes.json", "gijs_bruinsma")
+    import sys
+
+    # Example usage: python import_komoot_routes_to_db.py personal gravelritten gijs_bruinsma
+    sources = (
+        sys.argv[1:]
+        if len(sys.argv) > 1
+        else ["personal", "gravelritten", "gijs_bruinsma"]
+    )
+
+    for source in sources:
+        import_routes_from_file(f"downloads/{source}/{source}_routes.json", source)
