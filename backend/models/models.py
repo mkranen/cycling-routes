@@ -1,17 +1,27 @@
 import enum
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional, TypeAlias, Union
 
 from dotenv import load_dotenv
 from humps import camelize
 from komPYoot import API, TourOwner, TourStatus, TourType
-from pydantic import computed_field
+from pydantic import computed_field, validator
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
 from utils.route import LAT, LNG, get_min_max, get_track_points
+
+# Constants section
+DOWNLOAD_DIR: str = "./downloads"
+DEFAULT_SOURCES: list[str] = ["personal", "gravelritten", "gijs_bruinsma"]
+
+# Type aliases for better type safety
+KomootUserId: TypeAlias = str
+SportType: TypeAlias = Literal[
+    "race_bike", "mountain_bike", "gravel_bike", "touring_bike", "hike", "run"
+]
 
 komoot_sport_to_slug = {
     "racebike": "race_bike",
@@ -29,6 +39,65 @@ def to_camel(string):
     return camelize(string)
 
 
+def parse_datetime(date_str: str) -> datetime:
+    """Parse datetime string to UTC datetime object"""
+    dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    return dt.astimezone(timezone.utc)
+
+
+def ensure_download_dir(source: str) -> Path:
+    """Ensure download directory exists and return Path object"""
+    source_dir = Path(DOWNLOAD_DIR) / source
+    source_dir.mkdir(parents=True, exist_ok=True)
+    return source_dir
+
+
+class KomootConfig(SQLModel):
+    user_id: KomootUserId
+    tour_type: TourType
+    tour_status: TourStatus | None
+    tour_owner: TourOwner | None = None
+
+    @classmethod
+    def get_source_configs(cls, api: API) -> dict[str, "KomootConfig"]:
+        return {
+            "personal": cls(
+                user_id=api.user_details["user_id"],
+                tour_type=TourType.PLANNED,
+                tour_owner=TourOwner.SELF,
+                tour_status=None,
+            ),
+            "gravelritten": cls(
+                user_id="751970492203",
+                tour_type=TourType.PLANNED,
+                tour_status=TourStatus.PUBLIC,
+            ),
+            "gijs_bruinsma": cls(
+                user_id="753944379383",
+                tour_type=TourType.PLANNED,
+                tour_status=TourStatus.PUBLIC,
+            ),
+        }
+
+
+class KomootError(Exception):
+    """Base exception for Komoot-related errors"""
+
+    pass
+
+
+class KomootImportError(KomootError):
+    """Raised when there's an error importing routes"""
+
+    pass
+
+
+class KomootDownloadError(KomootError):
+    """Raised when there's an error downloading routes"""
+
+    pass
+
+
 class Point(SQLModel):
     lat: float
     lng: float
@@ -44,7 +113,7 @@ class Sport(str, enum.Enum):
     run = "run"
 
 
-SportType: ENUM = ENUM(
+SportEnum: ENUM = ENUM(
     Sport,
     name="sport",
     create_constraint=True,
@@ -100,9 +169,11 @@ class CollectionRoutePublic(SQLModel):
 class KomootRoute(SQLModel, table=True):
     __tablename__ = "komoot_routes"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(
+        default=None, primary_key=True, description="Unique identifier for the route"
+    )
     type: str
-    name: str
+    name: str = Field(..., min_length=1, description="Name of the route")
     source: dict = Field(sa_column=Column(JSON))
     routing_version: Optional[str] = None
     status: str
@@ -278,7 +349,6 @@ class KomootRoute(SQLModel, table=True):
 
             session.add(route)
 
-            # Add collection relationship
             if collection_slug:
                 collection = session.exec(
                     select(Collection).where(Collection.slug == collection_slug)
@@ -329,68 +399,87 @@ class KomootRoute(SQLModel, table=True):
 
     @classmethod
     def download_from_api(
-        cls, sources: list[str] = ["personal", "gravelritten", "gijs_bruinsma"]
+        cls, sources: list[str] = DEFAULT_SOURCES, download_dir: str = DOWNLOAD_DIR
     ) -> None:
-        """Download routes from Komoot API and save to JSON files."""
-        load_dotenv()
+        """
+        Download routes from Komoot API and save to JSON files.
 
-        email_id = os.getenv("KOMOOT_EMAIL")
-        password = os.getenv("KOMOOT_PASSWORD")
+        Args:
+            sources: List of source identifiers to download from
+            download_dir: Directory to save downloaded files
 
-        api = API()
-        api.login(email_id, password)
+        Raises:
+            KomootDownloadError: If there's an error during download
+            ValueError: If invalid source provided
+        """
+        try:
+            load_dotenv()
+            email_id = os.getenv("KOMOOT_EMAIL")
+            password = os.getenv("KOMOOT_PASSWORD")
 
-        source_configs = {
-            "personal": {
-                "user_id": api.user_details["user_id"],
-                "tour_type": TourType.PLANNED,
-                "tour_owner": TourOwner.SELF,
-                "tour_status": None,
-            },
-            "gravelritten": {
-                "user_id": "751970492203",
-                "tour_type": TourType.PLANNED,
-                "tour_status": TourStatus.PUBLIC,
-            },
-            "gijs_bruinsma": {
-                "user_id": "753944379383",
-                "tour_type": TourType.PLANNED,
-                "tour_status": TourStatus.PUBLIC,
-            },
-        }
+            if not email_id or not password:
+                raise KomootDownloadError("Missing Komoot credentials")
 
-        for source in sources:
-            if source not in source_configs:
-                print(f"Skipping unknown source: {source}")
-                continue
+            api = API()
+            api.login(email_id, password)
 
-            config = source_configs[source]
-            source_dir = f"{gpx_file_path}/{source}"
-            Path(source_dir).mkdir(parents=True, exist_ok=True)
+            source_configs = {
+                "personal": {
+                    "user_id": api.user_details["user_id"],
+                    "tour_type": TourType.PLANNED,
+                    "tour_owner": TourOwner.SELF,
+                    "tour_status": None,
+                },
+                "gravelritten": {
+                    "user_id": "751970492203",
+                    "tour_type": TourType.PLANNED,
+                    "tour_status": TourStatus.PUBLIC,
+                },
+                "gijs_bruinsma": {
+                    "user_id": "753944379383",
+                    "tour_type": TourType.PLANNED,
+                    "tour_status": TourStatus.PUBLIC,
+                },
+            }
 
-            # Get tours list
-            if source == "personal":
-                tours = api.get_user_tours_list(
-                    tour_type=config["tour_type"],
-                    tour_owner=config["tour_owner"],
-                    tour_status=config["tour_status"],
-                )
-            else:
-                tours = api.get_tours_list(
-                    user_id=config["user_id"],
-                    tour_type=config["tour_type"],
-                    tour_status=config["tour_status"],
-                )
+            for source in sources:
+                if source not in source_configs:
+                    print(f"Skipping unknown source: {source}")
+                    continue
 
-            # Save tours JSON
-            json_path = f"{source_dir}/{source}_routes.json"
-            with open(json_path, "w") as f:
-                json.dump(tours, f, indent=4)
+                config = source_configs[source]
+                source_dir = f"{download_dir}/{source}"
+                Path(source_dir).mkdir(parents=True, exist_ok=True)
 
-            # Download GPX files
-            for index, tour in enumerate(tours):
-                file_name = api.download_tour_gpx_file(tour, gpx_file_path)
-                print(f"Downloaded {source} - {index + 1}/{len(tours)}: {file_name}")
+                # Get tours list
+                if source == "personal":
+                    tours = api.get_user_tours_list(
+                        tour_type=config["tour_type"],
+                        tour_owner=config["tour_owner"],
+                        tour_status=config["tour_status"],
+                    )
+                else:
+                    tours = api.get_tours_list(
+                        user_id=config["user_id"],
+                        tour_type=config["tour_type"],
+                        tour_status=config["tour_status"],
+                    )
+
+                # Save tours JSON
+                json_path = f"{source_dir}/{source}_routes.json"
+                with open(json_path, "w") as f:
+                    json.dump(tours, f, indent=4)
+
+                # Download GPX files
+                for index, tour in enumerate(tours):
+                    file_name = api.download_tour_gpx_file(tour, download_dir)
+                    print(
+                        f"Downloaded {source} - {index + 1}/{len(tours)}: {file_name}"
+                    )
+
+        except Exception as e:
+            print(f"Error downloading routes: {str(e)}")
+            raise
 
     @classmethod
     def download_and_import(
@@ -528,9 +617,9 @@ class Route(SQLModel, table=True):
     __tablename__ = "routes"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(..., min_length=1)
     sport: Sport = Field(sa_column=Column(ENUM(Sport)))
-    distance: Optional[float] = None
+    distance: Optional[float] = Field(None, ge=0)
     komoot_id: Optional[int] = Field(default=None, foreign_key="komoot_routes.id")
     gpx_file_path: Optional[str] = None
     route_points: Optional[List[List[float]]] = Field(
@@ -542,8 +631,9 @@ class Route(SQLModel, table=True):
     max_lng: Optional[float] = None
 
     komoot: KomootRoute | None = Relationship(back_populates="routes")
-    # sport: Sport | None = Relationship(back_populates="routes")
-    collections: list["CollectionRoute"] = Relationship(back_populates="route")
+    collections: list["CollectionRoute"] = Relationship(
+        back_populates="route", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
     @staticmethod
     def get_by_id(session: Session, id: int):
@@ -638,6 +728,14 @@ class Route(SQLModel, table=True):
         session.add(self)
         session.commit()
 
+    def update_from_komoot(self, komoot_route: KomootRoute) -> None:
+        """Update route data from Komoot route"""
+        self.name = komoot_route.name
+        self.distance = komoot_route.distance
+        self.komoot_id = komoot_route.id
+        if komoot_route.sport in komoot_sport_to_slug:
+            self.sport = Sport(komoot_sport_to_slug[komoot_route.sport])
+
 
 class RoutePublic(SQLModel):
     id: int
@@ -645,7 +743,23 @@ class RoutePublic(SQLModel):
     sport: Optional[Sport] = None
     distance: Optional[float] = None
     collections: Optional[List[CollectionRoutePublic]] = None
-    route_points: Optional[List[List[float]]]
+    route_points: Optional[List[List[float]]] = Field(
+        None, description="List of [lat, lng] coordinates"
+    )
+
+    @validator("route_points")
+    def validate_route_points(
+        cls, v: Optional[List[List[float]]]
+    ) -> Optional[List[List[float]]]:
+        if v is not None:
+            for point in v:
+                if len(point) != 2:
+                    raise ValueError("Each point must be [lat, lng]")
+                if not (-90 <= point[0] <= 90):
+                    raise ValueError("Invalid latitude")
+                if not (-180 <= point[1] <= 180):
+                    raise ValueError("Invalid longitude")
+        return v
 
     @computed_field(description="source")
     @property
