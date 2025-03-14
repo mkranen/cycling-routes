@@ -29,9 +29,6 @@ def to_camel(string):
     return camelize(string)
 
 
-# Supporting models
-
-
 class Point(SQLModel):
     lat: float
     lng: float
