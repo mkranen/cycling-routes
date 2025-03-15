@@ -6,12 +6,15 @@ Created on Tue Aug  2 12:51:22 2022.
 @author: Nishad Mandlik
 """
 
+import logging
 import warnings
 import xml.etree.ElementTree as ET
 from enum import IntFlag, auto
 from pathlib import Path
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 _LOGIN_URL = "https://api.komoot.de/v006/account/email/%s/"
 _TOURS_URL = "https://www.komoot.com/api/v007/users/%s/tours/"
@@ -389,12 +392,16 @@ class API:
         file_dir = download_dir + "/" + sport
         Path(file_dir).mkdir(parents=True, exist_ok=True)
 
-        gpx_txt = self.download_tour_gpx_string(tour_id)
-        gpx_tree = ET.fromstring(gpx_txt)
-        file_name = gpx_tree[0][0].text.replace("/", "-") + ".gpx"
+        file_name = tour["name"].replace("/", "-") + ".gpx"
+        if Path(file_dir + "/" + file_name).exists():
+            logger.info(f"Skipped {file_name}")
+        else:
+            gpx_txt = self.download_tour_gpx_string(tour_id)
+            with open(file_dir + "/" + file_name, "w") as f:
+                f.write(gpx_txt)
 
-        with open(file_dir + "/" + file_name, "w") as f:
-            f.write(gpx_txt)
+            logger.info(f"Downloaded {file_name}")
+
         return file_name
 
     def download_tour_gpx_string(self, tour_id):
