@@ -492,7 +492,7 @@ class KomootRoute(SQLModel, table=True):
         sources: list[str] = ["personal", "gravelritten", "gijs_bruinsma"],
     ) -> None:
         """Download routes from API and import them to database."""
-        # cls.download_from_api(sources)
+        cls.download_from_api(sources)
 
         for source in sources:
             with open(f"{gpx_file_path}/{source}/{source}_routes.json") as f:
