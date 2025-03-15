@@ -1,3 +1,4 @@
+import logging
 import sys
 from pathlib import Path
 
@@ -5,8 +6,15 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from database import engine
-from models.models import KomootRoute
+from models.models import KomootRoute, Route
 from sqlmodel import Session
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 if __name__ == "__main__":
     sources = (

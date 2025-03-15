@@ -1,5 +1,6 @@
 import enum
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,6 +13,8 @@ from pydantic import computed_field, validator
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
 from utils.route import LAT, LNG, get_min_max, get_track_points
+
+logger = logging.getLogger(__name__)
 
 # Constants section
 DOWNLOAD_DIR: str = "./downloads"
@@ -373,7 +376,7 @@ class KomootRoute(SQLModel, table=True):
 
         except Exception as e:
             session.rollback()
-            print(
+            logger.error(
                 f"Error importing route {route_data.get('name', 'Unknown')}: {str(e)}"
             )
             raise
@@ -390,9 +393,9 @@ class KomootRoute(SQLModel, table=True):
             try:
                 route = cls.import_from_json(session, route_data, collection_slug)
                 imported_routes.append(route)
-                print(f"Imported {route.name}")
+                logger.info(f"Imported {route.name}")
             except Exception as e:
-                print(f"Skipping route due to error: {str(e)}")
+                logger.error(f"Skipping route due to error: {str(e)}")
                 continue
 
         return imported_routes
@@ -444,7 +447,7 @@ class KomootRoute(SQLModel, table=True):
 
             for source in sources:
                 if source not in source_configs:
-                    print(f"Skipping unknown source: {source}")
+                    logger.error(f"Skipping unknown source: {source}")
                     continue
 
                 config = source_configs[source]
@@ -473,13 +476,14 @@ class KomootRoute(SQLModel, table=True):
                 # Download GPX files
                 for index, tour in enumerate(tours):
                     file_name = api.download_tour_gpx_file(tour, download_dir)
-                    print(
+                    logger.info(
                         f"Downloaded {source} - {index + 1}/{len(tours)}: {file_name}"
                     )
 
+            logger.info(f"Downloaded {len(tours)} tours from {source}")
         except Exception as e:
-            print(f"Error downloading routes: {str(e)}")
-            raise
+            logger.error(f"Error downloading routes: {str(e)}")
+            raise KomootDownloadError(str(e))
 
     @classmethod
     def download_and_import(
@@ -488,12 +492,30 @@ class KomootRoute(SQLModel, table=True):
         sources: list[str] = ["personal", "gravelritten", "gijs_bruinsma"],
     ) -> None:
         """Download routes from API and import them to database."""
-        cls.download_from_api(sources)
+        # cls.download_from_api(sources)
 
         for source in sources:
-            cls.import_from_file(
-                session, f"{gpx_file_path}/{source}/{source}_routes.json", source
-            )
+            with open(f"{gpx_file_path}/{source}/{source}_routes.json") as f:
+                routes_data = json.load(f)
+                cls.bulk_import(session, routes_data)
+
+    @classmethod
+    def bulk_import(
+        cls, session: Session, routes_data: list[Dict]
+    ) -> list["KomootRoute"]:
+        """Import multiple routes in a single transaction"""
+        imported = []
+        try:
+            for route_data in routes_data:
+                route = cls.import_from_json(session, route_data)
+                imported.append(route)
+                logger.info(f"Imported {route.name}")
+            session.commit()
+            logger.info(f"Imported {len(imported)} routes")
+            return imported
+        except Exception as e:
+            session.rollback()
+            raise KomootImportError(f"Bulk import failed: {str(e)}")
 
 
 class KomootRoutePublic(SQLModel):
@@ -683,7 +705,6 @@ class Route(SQLModel, table=True):
         if limit is not None:
             query = query.limit(limit)
 
-        print(query)
         return session.exec(query).all()
 
     def add_gpx_file(self, session: Session):
