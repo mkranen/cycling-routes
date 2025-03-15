@@ -4,12 +4,12 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, TypeAlias, Union
+from typing import Dict, List, Literal, Optional, TypeAlias
 
 from dotenv import load_dotenv
 from humps import camelize
 from komPYoot import API, TourOwner, TourStatus, TourType
-from pydantic import computed_field, validator
+from pydantic import computed_field
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
 from utils.route import LAT, LNG, get_min_max, get_track_points
@@ -778,20 +778,6 @@ class RoutePublic(SQLModel):
     route_points: Optional[List[List[float]]] = Field(
         None, description="List of [lat, lng] coordinates"
     )
-
-    @validator("route_points")
-    def validate_route_points(
-        cls, v: Optional[List[List[float]]]
-    ) -> Optional[List[List[float]]]:
-        if v is not None:
-            for point in v:
-                if len(point) != 2:
-                    raise ValueError("Each point must be [lat, lng]")
-                if not (-90 <= point[0] <= 90):
-                    raise ValueError("Invalid latitude")
-                if not (-180 <= point[1] <= 180):
-                    raise ValueError("Invalid longitude")
-        return v
 
     @computed_field(description="source")
     @property
