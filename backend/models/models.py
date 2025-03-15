@@ -234,7 +234,7 @@ class KomootRoute(SQLModel, table=True):
         session: Session, route_data: Dict, collection_slug: str | None = None
     ) -> "KomootRoute":
         """
-        Import a route from JSON data with robust error handling and duplicate prevention.
+        Import a route from Komoot API data with robust error handling and duplicate prevention.
         """
         # Use a fresh session with no_autoflush to prevent premature flushing
         with session.no_autoflush:
