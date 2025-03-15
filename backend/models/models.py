@@ -403,13 +403,16 @@ class KomootRoute(SQLModel, table=True):
     @classmethod
     def download_from_api(
         cls, sources: list[str] = DEFAULT_SOURCES, download_dir: str = DOWNLOAD_DIR
-    ) -> None:
+    ) -> dict[str, list]:
         """
         Download routes from Komoot API and save to JSON files.
 
         Args:
             sources: List of source identifiers to download from
             download_dir: Directory to save downloaded files
+
+        Returns:
+            dict: Dictionary mapping source names to their downloaded routes data
 
         Raises:
             KomootDownloadError: If there's an error during download
@@ -445,6 +448,8 @@ class KomootRoute(SQLModel, table=True):
                 },
             }
 
+            downloaded_routes = {}
+
             for source in sources:
                 if source not in source_configs:
                     logger.error(f"Skipping unknown source: {source}")
@@ -468,6 +473,8 @@ class KomootRoute(SQLModel, table=True):
                         tour_status=config["tour_status"],
                     )
 
+                downloaded_routes[source] = tours
+
                 # Save tours JSON
                 json_path = f"{source_dir}/{source}_routes.json"
                 with open(json_path, "w") as f:
@@ -480,7 +487,10 @@ class KomootRoute(SQLModel, table=True):
                         f"Downloaded {source} - {index + 1}/{len(tours)}: {file_name}"
                     )
 
-            logger.info(f"Downloaded {len(tours)} tours from {source}")
+                logger.info(f"Downloaded {len(tours)} tours from {source}")
+
+            return downloaded_routes
+
         except Exception as e:
             logger.error(f"Error downloading routes: {str(e)}")
             raise KomootDownloadError(str(e))
@@ -492,22 +502,23 @@ class KomootRoute(SQLModel, table=True):
         sources: list[str] = ["personal", "gravelritten", "gijs_bruinsma"],
     ) -> None:
         """Download routes from API and import them to database."""
-        cls.download_from_api(sources)
+        downloaded_routes = cls.download_from_api(sources)
 
-        for source in sources:
-            with open(f"{gpx_file_path}/{source}/{source}_routes.json") as f:
-                routes_data = json.load(f)
-                cls.bulk_import(session, routes_data)
+        for source, routes_data in downloaded_routes.items():
+            cls.bulk_import(session, routes_data, collection_slug=source)
 
     @classmethod
     def bulk_import(
-        cls, session: Session, routes_data: list[Dict]
+        cls,
+        session: Session,
+        routes_data: list[Dict],
+        collection_slug: str | None = None,
     ) -> list["KomootRoute"]:
         """Import multiple routes in a single transaction"""
         imported = []
         try:
             for route_data in routes_data:
-                route = cls.import_from_json(session, route_data)
+                route = cls.import_from_json(session, route_data, collection_slug)
                 imported.append(route)
                 logger.info(f"Imported {route.name}")
             session.commit()
