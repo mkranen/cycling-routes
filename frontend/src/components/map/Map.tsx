@@ -44,6 +44,7 @@ function Map() {
         mapBounds,
     });
     const dispatch = useDispatch();
+    const geolocateControlRef = useRef<any>(null);
 
     const routesLayer = useMemo((): LineLayer => {
         return {
@@ -216,6 +217,20 @@ function Map() {
         mapRef.current.setFeatureState({ source: "routes", id: previousSelectedRoute.id }, { selected: false });
     }, [previousSelectedRoute]);
 
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (geolocateControlRef.current) {
+                try {
+                    geolocateControlRef.current.trigger();
+                } catch (error) {
+                    // Silently handle any errors
+                }
+            }
+        }, 1000);
+
+        return () => clearTimeout(timeoutId);
+    }, []);
+
     return (
         <MaplibreMap
             {...viewState}
@@ -246,15 +261,16 @@ function Map() {
             }}
         >
             <GeolocateControl
-                positionOptions={{ enableHighAccuracy: true }}
-                showAccuracyCircle={true}
-                position="bottom-right"
+                ref={geolocateControlRef}
+                positionOptions={{
+                    enableHighAccuracy: false,
+                    timeout: 6000,
+                    maximumAge: 0,
+                }}
+                auto={true}
                 onGeolocate={(event) => {
                     dispatch(setLongitude(event.coords.longitude));
                     dispatch(setLatitude(event.coords.latitude));
-                }}
-                onError={(error) => {
-                    console.log(error);
                 }}
             />
 
