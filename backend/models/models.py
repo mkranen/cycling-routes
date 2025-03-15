@@ -230,7 +230,7 @@ class KomootRoute(SQLModel, table=True):
         return session.exec(select(KomootRoute).limit(limit)).all()
 
     @staticmethod
-    def import_from_json(
+    def import_to_database(
         session: Session, route_data: Dict, collection_slug: str | None = None
     ) -> "KomootRoute":
         """
@@ -351,7 +351,7 @@ class KomootRoute(SQLModel, table=True):
         imported_routes = []
         for route_data in routes_data:
             try:
-                route = cls.import_from_json(session, route_data, collection_slug)
+                route = cls.import_to_database(session, route_data, collection_slug)
                 imported_routes.append(route)
                 logger.info(f"Imported {route.name}")
             except Exception as e:
@@ -505,7 +505,7 @@ class KomootRoute(SQLModel, table=True):
             # Create a savepoint for this route
             with session.begin_nested() as nested:
                 try:
-                    route = cls.import_from_json(session, route_data, collection_slug)
+                    route = cls.import_to_database(session, route_data, collection_slug)
                     imported.append(route)
                     # logger.info(
                     #     f"Imported route {i+1}/{len(routes_data)}: {route_data.get('name', 'Unknown')}"
