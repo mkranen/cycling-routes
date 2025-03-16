@@ -6,6 +6,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, TypeAlias
 
+# Import configuration
+from config import (
+    DEFAULT_SOURCES,
+    DOWNLOAD_DIR,
+    ensure_download_dir,
+    ensure_gpx_download_dir,
+)
 from dotenv import load_dotenv
 from humps import camelize
 from komPYoot import API, TourOwner, TourStatus, TourType
@@ -14,10 +21,16 @@ from sqlalchemy.dialects.postgresql import ENUM
 from sqlmodel import JSON, Column, Field, Relationship, Session, SQLModel, select
 from utils.route import LAT, LNG, get_min_max, get_track_points
 
-logger = logging.getLogger(__name__)
+# Use the shared logging configuration
+try:
+    from logging_config import configure_logging
+
+    logger = configure_logging()
+except ImportError:
+    # Fallback if the logging_config module is not available
+    logger = logging.getLogger(__name__)
 
 # Constants section
-DOWNLOAD_DIR: str = "./downloads"
 DEFAULT_SOURCES: list[str] = [
     "personal",
     "gravelritten",
@@ -39,8 +52,6 @@ komoot_sport_to_slug = {
     "run": "run",
 }
 
-gpx_file_path = "./downloads"
-
 
 def to_camel(string):
     return camelize(string)
@@ -50,13 +61,6 @@ def parse_datetime(date_str: str) -> datetime:
     """Parse datetime string to UTC datetime object"""
     dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
     return dt.astimezone(timezone.utc)
-
-
-def ensure_download_dir(source: str) -> Path:
-    """Ensure download directory exists and return Path object"""
-    source_dir = Path(DOWNLOAD_DIR) / source
-    source_dir.mkdir(parents=True, exist_ok=True)
-    return source_dir
 
 
 class KomootConfig(SQLModel):
@@ -273,6 +277,7 @@ class KomootRoute(SQLModel, table=True):
                 route = session.exec(
                     select(Route).where(Route.komoot_id == komoot_route.id)
                 ).first()
+                file_name = komoot_route.name.replace("/", "-") + ".gpx"
 
                 if route:
                     # Update existing route
@@ -281,12 +286,14 @@ class KomootRoute(SQLModel, table=True):
                     if not route.distance:
                         route.distance = komoot_route.distance
                     if not route.gpx_file_path:
-                        route.gpx_file_path = komoot_route.gpx_file_path
+                        route.gpx_file_path = file_name
                     if not route.sport and komoot_route.sport in komoot_sport_to_slug:
                         route.sport = Sport(komoot_sport_to_slug[komoot_route.sport])
+
                 else:
                     # Create new route with explicit None for id to ensure auto-increment
                     sport_value = None
+
                     if komoot_route.sport in komoot_sport_to_slug:
                         sport_slug = komoot_sport_to_slug[komoot_route.sport]
                         try:
@@ -302,12 +309,13 @@ class KomootRoute(SQLModel, table=True):
                         )
                         sport_value = Sport.gravel_bike
 
+                    file_name = komoot_route.name.replace("/", "-") + ".gpx"
                     route = Route(
                         id=None,  # Explicitly set to None to ensure auto-increment
                         name=komoot_route.name,
                         komoot_id=komoot_route.id,
                         distance=komoot_route.distance,
-                        gpx_file_path=komoot_route.gpx_file_path,
+                        gpx_file_path=file_name,
                         sport=sport_value,
                     )
 
@@ -333,7 +341,8 @@ class KomootRoute(SQLModel, table=True):
                             )
                             session.add(collection_route)
 
-                return komoot_route
+                route = route.set_route_data(session, collection_slug, commit=False)
+                return route
 
             except Exception as e:
                 logger.error(
@@ -358,12 +367,17 @@ class KomootRoute(SQLModel, table=True):
                 logger.error(f"Skipping route due to error: {str(e)}")
                 continue
 
+        # Commit all changes at once
+        try:
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to commit changes: {str(e)}")
+
         return imported_routes
 
     @classmethod
-    def download_from_api(
-        cls, sources: list[str] = DEFAULT_SOURCES, download_dir: str = DOWNLOAD_DIR
-    ) -> dict[str, list]:
+    def download_from_api(cls, sources: list[str] = DEFAULT_SOURCES) -> dict[str, list]:
         """
         Download routes from Komoot API and save to JSON files.
 
@@ -416,8 +430,7 @@ class KomootRoute(SQLModel, table=True):
                     continue
 
                 config = source_configs[source]
-                source_dir = f"{download_dir}/{source}"
-                Path(source_dir).mkdir(parents=True, exist_ok=True)
+                source_dir = ensure_download_dir(source)
 
                 # Get tours list
                 if source == "personal":
@@ -436,15 +449,16 @@ class KomootRoute(SQLModel, table=True):
                 downloaded_routes[source] = tours
 
                 # Save tours JSON
-                json_path = f"{source_dir}/{source}_routes.json"
+                json_path = source_dir / f"{source}_routes.json"
                 with open(json_path, "w") as f:
                     json.dump(tours, f, indent=4)
 
                 # Download GPX files
                 for tour in tours:
-                    api.download_tour_gpx_file(tour, f"{download_dir}/{source}")
+                    download_dir = ensure_gpx_download_dir(source, tour["sport"])
+                    api.download_tour_gpx_file(tour, download_dir)
 
-                logger.info(f"Downloaded {len(tours)} tours from {source}")
+                logger.info(f"Processed {len(tours)} tours from {source}")
 
             return downloaded_routes
 
@@ -456,11 +470,15 @@ class KomootRoute(SQLModel, table=True):
     def download_and_import(
         cls,
         session: Session,
-        sources: list[str] = ["personal", "gravelritten", "gijs_bruinsma"],
+        sources: list[str] = DEFAULT_SOURCES,
     ) -> None:
         """
         Download routes from API and import them to database.
         Each source is handled separately to prevent errors from affecting other sources.
+
+        Args:
+            session: SQLAlchemy session
+            sources: List of source identifiers to download from
         """
         try:
             downloaded_routes = cls.download_from_api(sources)
@@ -507,9 +525,6 @@ class KomootRoute(SQLModel, table=True):
                 try:
                     route = cls.import_to_database(session, route_data, collection_slug)
                     imported.append(route)
-                    # logger.info(
-                    #     f"Imported route {i+1}/{len(routes_data)}: {route_data.get('name', 'Unknown')}"
-                    # )
 
                 except Exception as e:
                     # If there's an error, the nested transaction will be rolled back
@@ -519,6 +534,7 @@ class KomootRoute(SQLModel, table=True):
                     skipped += 1
                     # Continue with next route
                     continue
+            session.commit()
 
         try:
             # Commit all successful imports
@@ -726,52 +742,71 @@ class Route(SQLModel, table=True):
         )
         return session.exec(query).all()
 
-    def add_gpx_file(self, session: Session):
+    def add_gpx_file(self, session: Session, commit: bool = True):
         if not self.name:
             return
 
         file_name = self.name.replace("/", "-") + ".gpx"
         self.gpx_file_path = file_name
         session.add(self)
-        session.commit()
 
-    def add_route_points(self, session: Session):
-        if not self.gpx_file_path or not self.sport:
-            return
+        if commit:
+            session.commit()
 
-        collection_slug = (
-            self.collections[0].collection.slug if self.collections else None
-        )
-        if not collection_slug:
-            return
+    def add_route_points(
+        self, session: Session, collection_slug: str | None = None, commit: bool = True
+    ):
+        """
+        Load route points from GPX file.
+        This method is kept for backward compatibility.
+        It now uses the load_route_data method.
+        """
+        return self.set_route_data(session, collection_slug, commit=commit)
 
-        activity_type = self.sport
-        file_path = (
-            f"{gpx_file_path}/{collection_slug}/{activity_type}/{self.gpx_file_path}"
-        )
+    def set_route_data(
+        self, session: Session, collection_slug: str | None = None, commit: bool = False
+    ):
+        """
+        Set route data from GPX file and populate route points and bounding box.
 
-        file = Path(file_path)
-        if not file.exists():
-            return
+        Args:
+            session: SQLAlchemy session
+            collection_slug: Collection slug to locate the GPX file
+            commit: Whether to commit the session after adding the route
 
-        file_string = file.read_text()
-        route_points = get_track_points(file_string)
-        self.route_points = route_points
-        self.min_lat, self.max_lat = get_min_max(self.route_points, LAT)
-        self.min_lng, self.max_lng = get_min_max(self.route_points, LNG)
+        Returns:
+            self: The updated route object
+        """
+        if not self.gpx_file_path or not self.sport or not collection_slug:
+            return self
 
-        session.add(self)
-        session.commit()
-
-    def populate_bounding_box(self, session: Session):
+        # Load route points from GPX file if not already loaded
         if not self.route_points:
-            return
+            activity_type = self.sport
+            file_path = (
+                ensure_gpx_download_dir(collection_slug, activity_type.value)
+                / self.gpx_file_path
+            )
 
-        self.min_lat, self.max_lat = get_min_max(self.route_points, LAT)
-        self.min_lng, self.max_lng = get_min_max(self.route_points, LNG)
+            file = Path(file_path)
+            if not file.exists():
+                logger.warning(f"GPX file not found: {file_path}")
+                return self
+
+            file_string = file.read_text()
+            self.route_points = get_track_points(file_string)
+
+        # Set bounding box
+        if self.route_points:
+            self.min_lat, self.max_lat = get_min_max(self.route_points, LAT)
+            self.min_lng, self.max_lng = get_min_max(self.route_points, LNG)
 
         session.add(self)
-        session.commit()
+
+        if commit:
+            session.commit()
+
+        return self
 
     def update_from_komoot(self, komoot_route: KomootRoute) -> None:
         """Update route data from Komoot route"""

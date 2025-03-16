@@ -389,15 +389,13 @@ class API:
         tour_id = tour["id"]
         sport = tour["sport"]
 
-        file_dir = download_dir + "/" + sport
-        Path(file_dir).mkdir(parents=True, exist_ok=True)
-
         file_name = tour["name"].replace("/", "-") + ".gpx"
-        if Path(file_dir + "/" + file_name).exists():
+        file_path = download_dir / f"{file_name}"
+        if Path(file_path).exists():
             logger.info(f"Skipped {file_name}")
         else:
             gpx_txt = self.download_tour_gpx_string(tour_id)
-            with open(file_dir + "/" + file_name, "w") as f:
+            with open(file_path, "w") as f:
                 f.write(gpx_txt)
 
             logger.info(f"Downloaded {file_name}")

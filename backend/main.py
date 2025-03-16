@@ -1,6 +1,15 @@
 import json
+import logging
 import os
+from pathlib import Path
 
+# Configure logging
+from logging_config import configure_logging
+
+logger = configure_logging()
+
+# Import configuration
+from config import DEFAULT_SOURCES, DOWNLOAD_DIR, ROOT_DIR
 from database import engine
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -144,6 +153,35 @@ def get_komoot_routes(*, session: Session = Depends(get_session), limit: int = 1
     return routes
 
 
+@app.get("/import-komoot-routes")
+def import_komoot_routes(
+    *,
+    session: Session = Depends(get_session),
+    sources: str = None,
+):
+    """
+    Import routes from Komoot API and save them to the database.
+    This endpoint uses the API directly to download and process routes.
+
+    Args:
+        sources: Comma-separated list of sources to import from
+    """
+    try:
+        # Parse sources
+        source_list = sources.split(",") if sources else DEFAULT_SOURCES
+
+        # Use the download_and_import method
+        KomootRoute.download_and_import(session, source_list)
+
+        return {
+            "status": "success",
+            "message": f"Successfully imported routes from {', '.join(source_list)}",
+        }
+    except Exception as e:
+        logger.error(f"Error importing routes: {str(e)}")
+        return {"status": "error", "message": f"Error importing routes: {str(e)}"}
+
+
 @app.get("/update-gpx")
 def update_gpx(
     *,
@@ -154,17 +192,6 @@ def update_gpx(
         route.add_gpx_file(session)
         route.add_route_points(session)
 
-    return "done"
-
-
-@app.get("/update-bounding-boxes")
-def update_bounding_boxes(
-    *,
-    session: Session = Depends(get_session),
-):
-    routes = Route.get_all(session, limit=None)
-    for route in routes:
-        route.populate_bounding_box(session)
     return "done"
 
 
@@ -179,39 +206,35 @@ def update_bounding_boxes(
 #     return "done"
 
 
-@app.get("/import-komoot-routes")
-def import_komoot_routes(
-    *,
-    session: Session = Depends(get_session),
-):
-    email_id = os.getenv("KOMOOT_EMAIL")
-    password = os.getenv("KOMOOT_PASSWORD")
-    process_personal = False
-    process_gravelritten = False
-    process_gijs_bruinsma = True
-
-    a = API()
-    a.login(email_id, password)
-
-    # Personal tours
-    if process_personal:
-        a.process_user_tours(
-            user_id=a.user_details["user_id"],
-            prefix="personal",
-            tour_status=None,
-        )
-
-    # Gravelritten
-    if process_gravelritten:
-        a.process_user_tours(user_id="751970492203", prefix="gravelritten")
-
-    # Gijs Bruinsma
-    if process_gijs_bruinsma:
-        a.process_user_tours(user_id="753944379383", prefix="gijs_bruinsma")
-
-
 @app.get("/test")
 def test():
     json_data = '{"id": 1990783694, "name": "test", "sport": "racebike", "routePoints": {"lat": 1, "lng": 2, "elevation": 3}}'
     # json_data = '[["aa", "bb", "cc"]]'
     print(KomootRoutePublic.model_validate_json(json_data))
+
+
+@app.get("/import-and-save-komoot-routes")
+def import_and_save_komoot_routes(
+    *,
+    session: Session = Depends(get_session),
+    sources: str = None,
+):
+    """
+    Import routes from Komoot API and save them to the database.
+
+    Args:
+        sources: Comma-separated list of sources to import from
+    """
+    # Parse sources
+    source_list = sources.split(",") if sources else DEFAULT_SOURCES
+
+    # Import routes
+    try:
+        KomootRoute.download_and_import(session, source_list)
+        return {
+            "status": "success",
+            "message": f"Successfully imported routes from {', '.join(source_list)}",
+        }
+    except Exception as e:
+        logger.error(f"Error importing routes: {str(e)}")
+        return {"status": "error", "message": f"Error importing routes: {str(e)}"}

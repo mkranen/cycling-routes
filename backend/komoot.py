@@ -13,15 +13,16 @@ from enum import IntFlag, auto
 from pathlib import Path
 
 import requests
+from config import ensure_download_dir, ensure_gpx_download_dir
 from models.models import komoot_sport_to_slug
 
 _LOGIN_URL = "https://api.komoot.de/v006/account/email/%s/"
 _TOURS_URL = "https://www.komoot.com/api/v007/users/%s/tours/"
 _TOUR_DL_GPX_URL = "https://api.komoot.de/v007/tours/%s.gpx"
 _TOUR_UL_GPX_URL = "https://api.komoot.de/v007/tours/"
-_DOWNLOAD_DIR = "./downloads"  
 
 # https://www.komoot.com/api/v007/users/751970492203/tours/?sport_types=&type=tour_planned&sort_field=date&sort_direction=desc&name=&status=public&hl=en&page=1&limit=24
+
 
 class AutoFlag(IntFlag):
     """Flag Enum with auto value generation."""
@@ -273,23 +274,42 @@ class API:
 
         return tours_filt
 
-    def process_user_tours(self, user_id, prefix, tour_type=TourType.PLANNED, tour_status=TourStatus.PUBLIC):
-        tours_file_name = f"{prefix}_routes.json"
-        download_dir = _DOWNLOAD_DIR + f"/{prefix}"
+    def process_user_tours(
+        self, user_id, prefix, tour_type=TourType.PLANNED, tour_status=TourStatus.PUBLIC
+    ):
+        """
+        Process user tours by downloading and saving them.
 
+        Parameters
+        ----------
+        user_id : str
+            User ID for Komoot account.
+        prefix : str
+            Prefix for the downloaded files.
+        tour_type : TourType, optional
+            Type of tour to download. The default is TourType.PLANNED.
+        tour_status : TourStatus, optional
+            Status of tour to download. The default is TourStatus.PUBLIC.
+        """
+        # Create the source directory
+        source_dir = ensure_download_dir(prefix)
+
+        # Get the tours list
         tours = self.get_tours_list(
             user_id=user_id,
             tour_type=tour_type,
             tour_status=tour_status,
         )
 
-        with open(download_dir + "/" + tours_file_name, "w") as f:
+        # Save tours JSON
+        json_path = source_dir / f"{prefix}_routes.json"
+        with open(json_path, "w") as f:
             json.dump(tours, f, indent=4)
 
-        # Download the tour to the specified directory
-        for index, tour in enumerate(tours):
-            file_name = self.download_tour_gpx_file(tour, download_dir)
-            print(f"{index + 1}/{len(tours)}: {file_name}")
+        # Download GPX files
+        download_dir = ensure_gpx_download_dir(prefix, tour_type.value)
+        for tour in tours:
+            self.download_tour_gpx_file(tour, download_dir)
 
     def get_user_tours_list(
         self, tour_type=None, tour_status=None, sport=None, tour_owner=None
@@ -309,7 +329,12 @@ class API:
         )
 
     def get_tours_list(
-        self, user_id, tour_type=None, tour_status=TourStatus.PUBLIC, sport=None, tour_owner=None
+        self,
+        user_id,
+        tour_type=None,
+        tour_status=TourStatus.PUBLIC,
+        sport=None,
+        tour_owner=None,
     ):
         """
         Get the list of tours for the given user, according to the user-defined filters.
@@ -344,7 +369,7 @@ class API:
 
         if self.user_details == {}:
             raise RuntimeError("User Details Not Available. Please Sign In.")
-        
+
         params = {}
         if tour_type is not None:
             self._add_flags_to_req_params(params, "type", tour_type, TourType)
@@ -388,7 +413,7 @@ class API:
         ----------
         tour_id : str
             Tour ID.
-        download_dir : str
+        download_dir : Path
             Path of the directory where the downloaded tour will be saved.
 
         Raises
@@ -402,21 +427,34 @@ class API:
             file_name if download is successful, None otherwise.
 
         """
-
         tour_id = tour["id"]
         komoot_sport = tour["sport"]
 
-        sport = komoot_sport_to_slug[komoot_sport]
-        file_dir = download_dir + "/" + sport
-        Path(file_dir).mkdir(parents=True, exist_ok=True)
+        # Get the sport slug
+        sport = komoot_sport_to_slug.get(komoot_sport, "other")
 
+        # Create the sport directory
+        file_dir = download_dir / sport
+        file_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create the file name
+        file_name = tour["name"].replace("/", "-") + ".gpx"
+        file_path = file_dir / file_name
+
+        # Check if file already exists
+        if file_path.exists():
+            print(f"Skipped {file_name}")
+            return file_name
+
+        # Download the GPX file
         gpx_txt = self.download_tour_gpx_string(tour_id)
-        gpx_tree = ET.fromstring(gpx_txt)
-        file_name = gpx_tree[0][0].text.replace("/", "-") + ".gpx"
+        if gpx_txt:
+            with open(file_path, "w") as f:
+                f.write(gpx_txt)
+            print(f"Downloaded {file_name}")
+            return file_name
 
-        with open(file_dir + "/" + file_name, "w") as f:
-            f.write(gpx_txt)
-        return file_name
+        return None
 
     def download_tour_gpx_string(self, tour_id):
         """
