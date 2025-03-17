@@ -17,6 +17,12 @@ export type RoutePoint = {
     time?: string;
 };
 
+export type CollectionRoute = {
+    id: number;
+    collection_id: number;
+    route_id: number;
+};
+
 export type RouteType = {
     id?: number;
     name?: string;
@@ -33,4 +39,5 @@ export type RouteType = {
     strava?: {
         id: string;
     };
+    collections?: CollectionRoute[];
 };
