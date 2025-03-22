@@ -666,27 +666,49 @@ class KomootTourInformation(SQLModel, table=True):
 # Route
 
 
+class RouteSegment(SQLModel, table=True):
+    __tablename__ = "route_segments"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    route_id: int = Field(foreign_key="routes.id")
+    start_point: List[float] = Field(sa_column=Column(JSON))
+    end_point: List[float] = Field(sa_column=Column(JSON))
+    geometry: List[float] = Field(sa_column=Column(JSON))
+
+    route: "Route" = Relationship(back_populates="segments")
+
+    class Config:
+        populate_by_name = True
+        alias_generator = to_camel
+
+    def __repr__(self):
+        return f"RouteSegment(id={self.id}, route_id={self.route_id})"
+
+
 class Route(SQLModel, table=True):
     __tablename__ = "routes"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(..., min_length=1)
-    sport: Sport = Field(sa_column=Column(ENUM(Sport)))
-    distance: Optional[float] = Field(None, ge=0)
-    komoot_id: Optional[int] = Field(default=None, foreign_key="komoot_routes.id")
+    id: int = Field(default=None, primary_key=True)
+    name: str
+    sport: Sport = Field(sa_column=Column(SportEnum))
+    distance: float
+    elevation_up: float
+    elevation_down: float
+    duration: int
+    route_points: List[List[float]] = Field(sa_column=Column(JSON))
     gpx_file_path: Optional[str] = None
-    route_points: Optional[List[List[float]]] = Field(
-        sa_column=Column(JSON), default=[]
-    )
-    min_lat: Optional[float] = None
-    min_lng: Optional[float] = None
-    max_lat: Optional[float] = None
-    max_lng: Optional[float] = None
+    komoot_id: Optional[int] = Field(default=None, foreign_key="komoot_routes.id")
 
-    komoot: KomootRoute | None = Relationship(back_populates="routes")
-    collections: list["CollectionRoute"] = Relationship(
-        back_populates="route", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
+    collections: List[CollectionRoute] = Relationship(back_populates="route")
+    komoot: Optional[KomootRoute] = Relationship(back_populates="routes")
+    segments: List[RouteSegment] = Relationship(back_populates="route")
+
+    class Config:
+        populate_by_name = True
+        alias_generator = to_camel
+
+    def __repr__(self):
+        return f"Route(id={self.id}, name={self.name}, sport={self.sport})"
 
     @staticmethod
     def get_by_id(session: Session, id: int):
